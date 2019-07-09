@@ -3,15 +3,15 @@
 # ================================ #
 # === WPX - WP CLI Multiplied! === #
 # ================================ #
-# ========= Version 1.0.0 ======== #
+# ========= Version 1.0.1 ======== #
 # ================================ #
-
+#
 # "You'll see your commands multiplied, if you continually decide, 
 # to faithfully pursue, the policy of root."
-
+#
 # WPX Home: http://wpmedic.tech/wpx/
 # WPX GitHub: https://github.com/majick777/wpx/
-
+#
 # WP CLI Home: http://wp-cli.org/
 # WP CLI Command Reference: https://developer.wordpress.org/cli/commands/
 
@@ -22,20 +22,21 @@
 # 0. (Install WP CLI if not already installed. http://wp-cli.org/) 
 # 1. Copy wpx to /usr/local/bin/ (or other environment path used)
 # 2. chmod +x /usr/local/bin/wpx (or other environment path used)
-# 3. Create a sites.conf in ~/.wp-cli/ (or environment path used)
+# 3. Create a wpx.conf in ~/.wp-cli/ (or in environment path used)
+# (or copy wpx.sample.conf to wpx.conf and edit it)
 
-# See sites.sample.conf, format is one site per line:
-# site-slug user:group /full/path/to/wordpress/install/
-# -- wp CLI commands will run using 'sudo -u user with the user specified !
-# -- providing :group is optional, and only used with check/fix file owners commands
-# -- site paths prefixed with * will use immutable core locking (see later explanation)
+# [Required] Set WordPress site paths in wpx.conf
+# site site-slug /full/path/to/wordpress/install/ user:group
+# -- all WP CLI commands will run prefixed with 'sudo -u user' for the user specified!
+# -- providing :group is optional (used with check/fix file owners commands)
+# -- site paths prefixed with * will use immutable core locking (see below explanation)
 
-# [Optional] Create sources.conf in the same directory as the wpx file
-# These are for use with all the "sync" ACTION commands listed below.
-# See sources.sample.conf, format is one source per line:
+# [Optional] Define source directories for file syncing.
+# These are for use with all the "SYNC" action commands (listed below.)
+# Format is one source per line:
 # type source-slug /full/source/path/
-# -- where 'type' is either: plugin, theme, core, muplugin or file
-
+# -- where 'type' is either: plugin, theme, core, muplugin or dropin
+# -- (dropins can be any file relative to the base install directory)
 
 # ========
 # UPDATING
@@ -47,30 +48,34 @@
 # =====
 # USAGE
 # =====
+# Important: wpx attempts to run WP CLI commands as the user specified,
+# so you will need to be logged in either as that user or as root.
+#
 # wpx COMMAND SITE(S) SLUG(S)
 #
-# where COMMAND is a command from the action list below.
-# and SITE(S) is a site reference slug defined in sitepath.conf (may be a comma-separated list)
-# - note: if a value of "all" is specified, the COMMAND will be run on EVERY site in sites.conf!
-# and SLUG(S) is an optional reference to theme or plugin slugs (may be a comma-separated list)
+# - COMMAND is a command from the action list below
+# - SITE(S) is a site reference slug defined in wpx.conf (may be a comma-separated list)
+# (note: if a site value of "all" is specified, the COMMAND will be run on EVERY site in wpx.conf)
+# - SLUG(S) is an optional reference to theme or plugin slugs (may be a comma-separated list)
 
 
 # ========
 # COMMANDS
 # ========
-# Note: [SYNC] commands use sources defined in sources.conf, all others use WordPress repository sources.
+# Note: [SYNC] commands use sources defined in wpx.conf, all others use WordPress repository sources.
 #
 # [CORE]	checkversion		Check installed WP Core version(s) on the SITE(S) specified
-#		updatecore		Update to latest WP Core(s) on SITE(S) (version argument optional)
 #		verifycore		Verify WP Core(s) Checksums on SITE(S) (requires no WP errors)
-#		reinstallcore		Reinstall WP Core(s) on SITE(S)
+#		updatecore		Update to latest WP Core(s) on SITE(S) (version argument optional)
+#		installcore		Install WP Core(s) to SITE(S) (version and locale optional)
+#		reinstallcore		Reinstall WP Core(s) on SITE(S) (auto-matches version and locale)
 #		lockcore		Add the immutable lock to WP Core(s) files on SITE(S)
-#		unlockcore		Removes immutable lock from WP Core files on SITE(S)
+#		unlockcore		Removes immutable lock from WP Core(s) files on SITE(S)
 #		checklock		Checks immutable switch on all WP Core files on SITE(S)
-#		checkowners		Checks all file owner/group match those in sites.conf on SITE(S)
-#		fixowners		Change all file owner/group to those in sites.conf on SITE(S)
-# [PLUGIN]	checkplugin		Check plugin(s) SLUG(S) for SITE(S) - status, version, updates
-#		listplugins		Now an alias of checkplugin (re-formatted table list)
+#		checkowners		Checks all file owner/group match those in wpx.conf on SITE(S)
+#		fixowners		Change all file owner/group to those in wpx.conf on SITE(S)
+# [PLUGIN]	listplugins		Now an alias of checkplugin (re-formatted table) - default 'all'
+#		checkplugin		Check plugin(s) SLUG(S) for SITE(S) - status, version, updates	
 #		activateplugin		Activate plugin(s) SLUG(S) for SITE(S)
 #		deactivateplugin	Deactivate plugin(s) SLUG(S) for SITE(S)
 #		installplugin		Install plugin(s) SLUG(S) for SITE(S)
@@ -80,24 +85,25 @@
 #		updateallplugins	Update ALL plugins for SITE(S)
 #		deleteplugin		Deletes plugin(s) SLUG(S) for SITE(S)
 # [THEME]	listthemes		List installed themes on SITE(S)
-#		checktheme		Check active child and parent themes versions on SITE(S)	
+#		checktheme		Check active child and parent themes on SITE(S)	
 #		activatetheme		Activate theme SLUG for SITE(S)
-#		installtheme		Install theme SLUG for SITE(S)
+#		installtheme		Install theme SLUG(S) for SITE(S)
 #		installactivatetheme	Install and Activate theme SLUG for SITE(S)
-#		reinstalltheme		Reinstall theme SLUG for SITE(S)
-#		updatetheme		Update theme SLUG for SITE(S)
-# [SYNC]	synccore		Sync core SLUG for SITE(S) using sources.conf
-#		syncplugin		Sync plugin SLUG(S) for SITE(S) using sources.conf
-#		syncactivateplugin	Sync and activate plugin SLUG(S) for SITE(S) using sources.conf
-#		synctheme		Sync theme SLUG for SITE(S) using sources.conf
-#		syncactivatetheme	Sync and activate theme SLUG for SITE(S) using sources.conf
-#		syncmuplugin		Sync must-use plugin SLUG(S) for SITE(S) using sources.conf
-#		syncfile		Sync root-relative file SLUG for SITE(S) using sources.conf
+#		reinstalltheme		Reinstall theme SLUG(S) for SITE(S)
+#		updatetheme		Update theme SLUG(S) for SITE(S)
+# [SYNC]	synccore		Sync core SLUG for SITE(S) using wpx.conf
+#		syncplugin		Sync plugin SLUG(S) for SITE(S) using wpx.conf
+#		syncactivateplugin	Sync and activate plugin SLUG(S) for SITE(S) using wpx.conf
+#		synctheme		Sync theme SLUG for SITE(S) using wpx.conf
+#		syncactivatetheme	Sync and activate theme SLUG for SITE(S) wpx.conf
+#		syncmuplugin		Sync must-use plugin SLUG(S) for SITE(S) wpx.conf
+#		syncdropin		Sync dropin (relative files) SLUG(S) for SITE(S) using wpx.conf
 #		
-# Note: For ease of use, MOST singular plugin and theme commands will also work in plural form:
+# Note: For ease of use, MOST singular plugin and theme commands will also work in plural form, ie:
+# [CORE]	checkversions, verifycores, installcores, reinstallcores, updatecores, lockcores, unlockcores, checklocks
 # [PLUGIN]	checkplugins, activateplugins, deactivateplugins, installplugins, installactivateplugins, reinstallplugins, updateplugins
 # [THEME]	checkthemes, installthemes, reinstallthemes, updatethemes (but NOT activatethemes or installactivatethemes)
-# [SYNC]	syncplugins, syncactivateplugins, syncthemes, syncmuplugins, syncfiles (but NOT syncactivatethemes)
+# [SYNC]	synccores, syncplugins, syncactivateplugins, syncthemes, syncmuplugins, syncfiles (but NOT syncactivatethemes)
 
 
 # ---------------------------
@@ -117,7 +123,7 @@
 # This will mean you will need to run core updates via WPX - logged in as root user to 
 # (Alternatively, unlock with WPX (as root), then update via whatever process, then relock with WPX.)
 #
-# To use this feature, simply prefix any sitepaths in sites.conf with * and run this lock the files:
+# To use this feature, simply prefix any sitepaths in wpx.conf with * and run this lock the files:
 # wpx lockcore mysiteslug
 #
 # WPX will attempt to unlock before and then relock after ANY core commands that it runs. 
@@ -143,6 +149,7 @@
 # -- do not set --path if src path is already set via config.yml ?
 # * allow for use of @alias in combination with site slug ? 
 #
+# *** ensure getting first line match only (theme header)
 # ? define SUCCESS value for updatecore and updateallplugins
 # ? add downgradecore to WP version function ?
 # ? add plugin and theme rollback functions ?
@@ -158,6 +165,8 @@ set +x
 
 # declare any globals
 RESULT=""
+INARRAY=""
+REINSTALL=""
 
 # Colours
 black() { printf "$(tput setaf 0)$*$(tput setaf 9)"; }
@@ -174,8 +183,8 @@ white() { printf "$(tput setaf 7)$*$(tput setaf 9)"; }
 # ------------------ #
 function validcommands {
 	red "Valid Commands"; echo ":"
-	printf "["; yellow "CORE"; echo "] checkversion, updatecore, verifycore, reinstallcore, lockcore, unlockcore, checklock, checkowners, fixowners"
-	printf "["; yellow "PLUGIN"; echo "] checkplugins, activateplugin, deactivateplugin, installplugin, installactivateplugin, reinstallplugin, updateplugin, updateallplugins, deleteplugin"
+	printf "["; yellow "CORE"; echo "] checkversion, verifycore, installcore, reinstallcore, updatecore, lockcore, unlockcore, checklock, checkowners, fixowners"
+	printf "["; yellow "PLUGIN"; echo "] listplugin, checkplugin, activateplugin, deactivateplugin, installplugin, installactivateplugin, reinstallplugin, updateplugin, updateallplugins, deleteplugin"
 	printf "["; yellow "THEME"; echo "] listthemes, checktheme, activatetheme, installtheme, installactivatetheme, reinstalltheme, updatetheme"
 	printf "["; yellow "SYNC"; echo "] syncplugin, syncactivateplugin, syncmuplugin, synctheme, syncactivatetheme, syncmuplugin, syncfile"
 }
@@ -187,14 +196,9 @@ function checkresult {
 	local OUTPUT=$1; local SUCCESS=$2; local TYPE=$3
 	
 	# TODO: set more "already done" strings ...
-	if [ "$TYPE" == 'install' ]; then
-		ALREADY="already installed"
-	fi
-	if [ "$TYPE" == 'activate' ]; then
-		ALREADY="already activated"
-	fi
+	if [ "$TYPE" == 'install' ]; then ALREADY="already installed"; fi
+	if [ "$TYPE" == 'activate' ]; then ALREADY="already activated"; fi
 	
-
 	# TODO: if [[ "$OUTPUT" == *"Error"* ]]; then
 	
 		# if [[ "$OUTPUT" == *"PHP Parse Error"* ]]; then
@@ -210,17 +214,31 @@ function checkresult {
 	# fi;
 	
 	# if [ -z "$SUCCESS ]"; then
-		if [[ "$OUTPUT" == *"$SUCCESS"* ]]; then
+		if [[ "$OUTPUT" == *"$SUCCESS"* ]]; then 
 			RESULT="success"
 		else 
-			if [[ "$OUTPUT" == *"$ALREADY"* ]]; then
+			if [[ "$OUTPUT" == *"$ALREADY"* ]]; then 
 				RESULT="success"
-			else
+			else 
 				RESULT="failed"
 			fi
 		fi
 	# fi
 	
+}
+
+# -------------------------- #
+# Check for Element in Array # 
+# -------------------------- #
+function checkarray {
+	local MATCH; MATCH=$1
+	for ELEMENT in "${ARRAY[@]}"; do
+		# echo "$ELEMENT - $MATCH"
+		if [[ "$ELEMENT" == "$MATCH" ]]; then 
+			INARRAY="1"; return 1; 
+		fi
+	done
+	INARRAY="0"; return 0
 }
 
 
@@ -234,10 +252,11 @@ function checkresult {
 function checkversion {
 	
 	# equivalent to: wp core version --path="$SITEPATH" but without using WP CLI
-	local VERSIONPATH=$SITEPATH"wp-includes/version.php"
-	local VERSION=$(grep "wp_version = " $VERSIONPATH | cut -d \' -f2)
+	local VERSIONPATH; local VERSION
+	VERSIONPATH=$SITEPATH"wp-includes/version.php"
+	VERSION=$(grep "wp_version = " "$VERSIONPATH" | cut -d \' -f2)
 	# TEST=$(grep "wp_version = " $VERSIONPATH | awk '{print $3}')
-	green $SITENAME; printf " : WP "; yellow $VERSION; echo " ";
+	green "$SITENAME"; printf " : WordPress version "; yellow "$VERSION"; echo " ";
 
 }
 
@@ -246,16 +265,18 @@ function checkversion {
 # ----------- #
 function verifycore {
 	
-	# equivalent to: wp core version --path="$SITEPATH"
-	local VERSIONPATH=$SITEPATH"wp-includes/version.php"
-	local VERSION=$(grep "wp_version = " $VERSIONPATH | cut -d \' -f2)
+	local VERSIONPATH; local VERSION
 	
-	yellow "***"; printf " Verifying core checksums for "; green "$SITENAME"; printf " (WP "; echo $VERSION")"
+	# equivalent to: wp core version --path="$SITEPATH"
+	VERSIONPATH=$SITEPATH"wp-includes/version.php"
+	VERSION=$(grep "wp_version = " "$VERSIONPATH" | cut -d \' -f2)
+	
+	yellow "***"; printf " Verifying core checksums for "; green "$SITENAME"; printf " (WP "; yellow "$VERSION" echo ")"
 	OUTPUT=$(sudo -u "$SITEUSER" wp core verify-checksums --path="$SITEPATH" --version="$VERSION" --skip-plugins)
 	
-	# TODO: define SUCCESS (this command is too finnicky for this!)
+	# TODO: define SUCCESS (seems this command is too finnicky for this!)
 	# $SUCCESS=""
-	checkresult $OUTPUT
+	checkresult "$OUTPUT"
 	if [ "$RESULT" == "failed" ]; then
 		OUTPUT=$(sudo -u "$SITEUSER" wp core verify-checksums --path="$SITEPATH" --version="$VERSION")
 	fi
@@ -270,34 +291,96 @@ function updatecore {
 	local VERSION=$1
 	
 	# - maybe unlock core -
-	if [ "$SITELOCKING" == "true" ]; then
-		unlockcore
-	fi
+	if [ "$SITELOCKING" == "true" ]; then unlockcore; fi
 	
 	# - attempt core update -
+	# TODO: handle 'minor' updates ?
 	# TODO: define SUCCESS here ?
 	SUCCESS=""
 	if [ -z "$VERSION" ]; then
+		# - update to latest version -
 		OUTPUT=$(sudo -u "$SITEUSER" wp core update --path="$SITEPATH" --skip-plugins)
 	else
+		# - update to specific version -
 		OUTPUT=$(sudo -u "$SITEUSER" wp core update --path="$SITEPATH" --skip-plugins --version="$VERSION" --force)
 	fi
-	checkresult $OUTPUT $SUCCESS
+	checkresult "$OUTPUT" "$SUCCESS"
 	
 	# - maybe try again -
 	if [ "$RESULT" == "failed" ]; then
-		if [ -z $VERSION ]; then
+		if [ -z "$VERSION" ]; then
+			# - update to latest version -
 			OUTPUT=$(sudo -u "$SITEUSER" wp core update --path="$SITEPATH" --skip-plugins)
 		else 
+			# - update to specific version -
 			OUTPUT=$(sudo -u "$SITEUSER" wp core update --path="$SITEPATH" --skip-plugins --version="$VERSION" --force)
 		fi
 	fi
 	echo "$OUTPUT"
 	
 	# - maybe relock core -
-	if [ "$SITELOCKING" == "true" ]; then
-		lockcore
+	if [ "$SITELOCKING" == "true" ]; then lockcore; fi
+}
+
+# ------------ #
+# Install Core #
+# ------------ #
+function installcore {
+
+	local VERSION=$1; local LOCALE=$2; local TEMPCOREPATH=$SITEPATH"core-temp/"
+
+	# - maybe unlock core -
+	if [ "$SITELOCKING" == "true" ]; then unlockcore; fi
+
+	# - clear new core temp directory -
+	sudo -u "$SITEUSER" rm -rf "$TEMPCOREPATH"
+	sudo -u "$SITEUSER" mkdir "$TEMPCOREPATH"
+	
+	# - download core -
+	if [ -z "$LOCALE" ]; then
+		OUTPUT=$(sudo -u "$SITEUSER" wp core download --version="$VERSION" --path="$TEMPCOREPATH")
+		yellow "***"; printf " Reinstalling Core (Version: "; yellow "$VERSION"; printf ") for "; green "$SITENAME"; echo "..."
+	else 
+		OUTPUT=$(sudo -u "$SITEUSER" wp core download --version="$VERSION" --locale="$LOCALE" --path="$TEMPCOREPATH")
+		yellow "***"; printf " Reinstalling Core (Version: "; yellow "$VERSION"; printf ", Locale: "; yellow "$LOCALE"; printf ") for "; green "$SITENAME"; echo "..."
 	fi
+	echo "$OUTPUT"
+	
+	# TODO: define SUCCESS for reattempt ?
+	# SUCCESS=""
+	checkresult "$OUTPUT" "$SUCCESS"
+	
+	# - maybe retry core download -
+	# if [ "$RESULT" == "failed" ]; then
+	#	if [ -z "$LOCALE" ]; then
+	#		OUTPUT=$(sudo -u "$SITEUSER" wp core download --version="$VERSION" --path="$TEMPCOREPATH")
+	#		yellow "***"; printf " Reinstalling Core (Version: "; yellow "$VERSION"; printf ") for "; green "$SITENAME"; echo "..."
+	#	else 
+	#		OUTPUT=$(sudo -u "$SITEUSER" wp core download --version="$VERSION" --locale="$LOCALE" --path="$TEMPCOREPATH")
+	#		yellow "***"; printf " Reinstalling Core (Version: "; yellow "$VERSION"; printf ", Locale: "; yellow "$LOCALE"; printf ") for "; green "$SITENAME"; echo "..."
+	#	fi
+	# fi
+
+	if [ "$RESULT" == "success" ]; then
+
+		# - output core syncing message -
+		yellow "***"; printf "Syncing Downloaded Core to "; cyan "$SITEPATH"; echo "..."
+	
+		# - remove wp-content directory from temp core to prevent any overwriting -
+		if [ "$REINSTALL" == "true" ]; then
+			sudo -u "$SITEUSER" rm -rf "$TEMPCOREPATH"/wp-content
+		fi
+	
+		# - sync from temp core dir to core dir -
+		# TODO: maybe use with --backup option?
+		sudo -u "$SITEUSER" rsync --delay-updates --remove-source-files -av "$TEMPCOREPATH" "$SITEPATH"
+		
+		# - cleanup temp core directory -
+		sudo -u "$SITEUSER" rm -rf "$TEMPCOREPATH"
+	fi
+	
+	# - maybe relock core -
+	if [ "$SITELOCKING" == "true" ]; then lockcore; fi
 }
 
 # -------------- #
@@ -305,64 +388,21 @@ function updatecore {
 # -------------- #
 function reinstallcore {
 	
-	local VERSIONPATH=$SITEPATH"wp-includes/version.php"
-	local NEWCOREPATH=$SITEPATH"core-update/"
+	local VERSION; local VERSIONPATH; local LOCALE
 	
-	# - get version and locale -
-	local VERSION=$(grep "wp_version = " $VERSIONPATH | cut -d \' -f2)
-	local LOCALE=$(sudo -u "$SITEUSER" wp core language list --status=installed --path="$SITEPATH" | grep "installed" | cut -f1)
+	# - get version -
+	VERSIONPATH=$SITEPATH"wp-includes/version.php"
+	VERSION=$(grep "wp_version = " "$VERSIONPATH" | cut -d \' -f2)
 	
-	# - maybe unlock core -
-	if [ "$SITELOCKING" == "true" ]; then
-		unlockcore
-	fi
+	# - get locale -
+	# TODO: check if this handles multiple installed locales ?
+	LOCALE=$(sudo -u "$SITEUSER" wp core language list --status=installed --path="$SITEPATH" | grep "installed" | cut -f1)
 
-	# - clear new core temp directory -
-	sudo -u "$SITEUSER" rm -rf "$NEWCOREPATH"
-	sudo -u "$SITEUSER" mkdir "$NEWCOREPATH"
-	
-	# - download core -
-	if [ -z "$LOCALE" ]; then
-		OUTPUT=$(sudo -u "$SITEUSER" wp core download --version="$VERSION" --path="$NEWCOREPATH")
-		yellow "***"; printf " Downloading New Core (version=$VERSION) for '"; green $SITENAME; echo "'..."
-	else 
-		OUTPUT=$(sudo -u "$SITEUSER" wp core download --version="$VERSION" --locale="$LOCALE" --path="$NEWCOREPATH")
-		yellow "***"; printf " Downloading New Core (version=$VERSION, locale=$LOCALE) for '"; green $SITENAME; echo "'..."
-	fi
-	echo "$OUTPUT"
-	
-	# TODO: maybe define SUCCESS and use checkresult ?
-	checkresult $OUTPUT $SUCCESS
-	
-	# - maybe retry core download -
-	# if [ "$RESULT" == "failed" ]; then
-	#	if [ -z "$LOCALE" ]; then
-	#		OUTPUT=$(sudo -u "$SITEUSER" wp core download --version="$VERSION" --path="$NEWCOREPATH")
-	#		yellow "***"; printf " Reinstalling Core (version=$VERSION) for '"; green $SITENAME; echo "'..."
-	#	else 
-	#		OUTPUT=$(sudo -u "$SITEUSER" wp core download --version="$VERSION" --locale="$LOCALE" --path="$NEWCOREPATH")
-	#		yellow "***"; printf " Reinstalling Core (version=$VERSION, locale=$LOCALE) for '"; green $SITENAME; echo "'..."
-	#	fi
-	# fi
+	# - set reinstalling flag -
+	REINSTALL="true"
 
-	if [ "$RESULT" == "success" ]; then
-
-		# - output core syncing message -
-		yellow "***"; printf "Syncing Downloaded Core to '"; green $SITEPATH; echo "'..."
-	
-		# - remove wp-content directory from temp core to prevent any overwriting -
-		sudo -u "$SITEUSER" rm -rf "$NEWCOREPATH"/wp-content
-	
-		# - sync from temp dir to core dir -
-		# TODO: maybe use with --backup option?
-		sudo -u "$SITEUSER" rsync --delay-updates --remove-source-files -av "$NEWCOREPATH" "$SITEPATH"
-		sudo -u "$SITEUSER" rm -rf "$NEWCOREPATH"
-	fi
-	
-	# - maybe relock core -
-	if [ "$SITELOCKING" == "true" ]; then
-		lockcore
-	fi
+	# - reinstall existing version / local -
+	installcore "$VERSION" "$LOCALE"
 }
 
 # --------- #
@@ -370,27 +410,39 @@ function reinstallcore {
 # --------- #
 function lockcore {
 
-	local INCLUDES=$SITEPATH"/wp-includes"
-	local ADMIN=$SITEPATH"/wp-admin"
+	local INCLUDES; local ADMIN;
+	INCLUDES=$SITEPATH"/wp-includes"
+	ADMIN=$SITEPATH"/wp-admin"
 	
 	# - output locking message -
-	yellow "**"; printf " Locking "$SITEPATH; echo "..."
+	yellow "**"; printf " Locking "; printf "$SITEPATH"; echo "..."
 	
 	# - lock core base files -
 	# note: skip license.txt and readme.html
 	BASEFILES=(".htaccess" "index.php" "wp-activate.php" "wp-blog-header.php" "wp-comments-post.php" "wp-config.php" "wp-config-sample.php" "wp-cron.php" "wp-links-opml.php" "wp-login.php" "wp-mail.php" "wp-settings.php" "wp-signup.php" "wp-trackback.php" "xmlrpc.php")
 	for BASEFILE in "${BASEFILES[@]}"; do
-		echo "$BASEFILE"
-		if [ -e "$SITEPATH/$BASEFILE" ]; then
-		 	sudo -u root chattr +i "$SITEPATH/$BASEFILE"
+		FILEPATH="$SITEPATH""/""$BASEFILE"
+		if [ -e "$FILEPATH" ]; then
+		 	sudo -u root chattr +i "$FILEPATH"
+		else
+			red "Error!"; white " $BASEFILE"; echo " not found!"
 	 	fi
 	done
 	
-	# - recursively lock wp-includes and wp-admin dirs -
+	# - lock wp-includes recursively - 
 	if [ -d "$INCLUDES" ]; then
-		sudo -u root chattr -R +i "$INCLUDES"; fi
+		sudo -u root chattr -R +i "$INCLUDES"
+		yellow "*"; white " $BASEFILE"; echo " not found!"
+	else 
+		red "Error!"; echo " /wp-includes/ directory not found!"
+	fi
+	
+	# - lock wp-admin recursively - 
 	if [ -d "$ADMIN" ]; then
-		sudo -u root chattr -R +i "$ADMIN"; fi
+		sudo -u root chattr -R +i "$ADMIN"
+	else
+		red "Error!"; echo " /wp-admin/ directory not found!"
+	fi
 }
 
 # ----------- #
@@ -398,27 +450,38 @@ function lockcore {
 # ----------- #
 function unlockcore {
 
-	local INCLUDES=$SITEPATH"/wp-includes"
-	local ADMIN=$SITEPATH"/wp-admin"
+	local INCLUDES; local ADMIN
+	INCLUDES=$SITEPATH"/wp-includes"
+	ADMIN=$SITEPATH"/wp-admin"
 	
 	# - output unlock message -
-	yellow "**"; printf " Unlocking "$SITEPATH; echo "..."
+	yellow "**"; printf " Unlocking "; printf "$SITEPATH"; echo "..."
 	
 	# - unlock core base files -
 	# note: skip license.txt and readme.html
 	BASEFILES=(".htaccess" "index.php" "wp-activate.php" "wp-blog-header.php" "wp-comments-post.php" "wp-config.php" "wp-config-sample.php" "wp-cron.php" "wp-links-opml.php" "wp-login.php" "wp-mail.php" "wp-settings.php" "wp-signup.php" "wp-trackback.php" "xmlrpc.php")
 	for BASEFILE in "${BASEFILES[@]}"; do
-		echo "$BASEFILE"
-		if [ -e "$SITEPATH/$BASEFILE" ]; then
-		 	sudo -u root chattr -i "$SITEPATH/$BASEFILE"
+		FILEPATH="$SITEPATH""/""$BASEFILE"
+		if [ -e "$FILEPATH" ]; then
+		 	sudo -u root chattr -i "$FILEPATH"
+		else
+			red "Error!"; white " $BASEFILE"; echo " not found!"
 		fi
 	done
 	
-	# - recursively unlock wp-includes and wp-admin -
+	# - unlock wp-includes recursively -
 	if [ -d "$INCLUDES" ]; then
-		sudo -u root chattr -R -i "$INCLUDES"; fi
+		sudo -u root chattr -R -i "$INCLUDES"
+	else
+		red "Error!"; echo " /wp-includes/ directory not found!"
+	fi
+	
+	# - unlock wp-admin recursively -
 	if [ -d "$ADMIN" ]; then
-		sudo -u root chattr -R -i "$ADMIN"; fi
+		sudo -u root chattr -R -i "$ADMIN"
+	else
+		red "Error!"; echo " /wp-admin/ directory not found!"
+	fi
 }
 
 # --------------- #
@@ -426,30 +489,31 @@ function unlockcore {
 # --------------- #
 function checkcorelock {
 	
-	local INCLUDES=$SITEPATH"/wp-includes"
-	local ADMIN=$SITEPATH"/wp-admin"
+	local INCLUDES; local ADMIN
+	INCLUDES=$SITEPATH"/wp-includes"
+	ADMIN=$SITEPATH"/wp-admin"
 	# local LOCKFILE=$SITENAME".lok"
 	
 	# - output lock check message -
-	yellow "**"; printf "Checking Core file locks for "; green $SITENAME; echo "..."
+	yellow "**"; printf "Checking Core file locks for "; green "$SITENAME"; echo "..."
 	
 	# - check lock for core base files -
 	# TODO: compare to core base file list
 	# BASEFILES=(".htaccess" "index.php" "wp-activate.php" "wp-blog-header.php" "wp-comments-post.php" "wp-config.php" "wp-config-sample.php" "wp-cron.php" "wp-links-opml.php" "wp-login.php" "wp-mail.php" "wp-settings.php" "wp-signup.php" "wp-trackback.php" "xmlrpc.php")
-	BASEFILES=$(lsattr -l $SITEPATH | grep " Immutable")
+	BASEFILES=$(lsattr -l "$SITEPATH" | grep " Immutable")
 	# | tee $LOCKFILE
 	echo $(echo -n "$BASEFILES" | grep -c '^') immutable base files
 	
 	# - check lock for wp-includes dir files -
 	if [ -d "$INCLUDES" ]; then
-		INCFILES=$(lsattr -R -l $INCLUDES | grep " Immutable")
+		INCFILES=$(lsattr -R -l "$INCLUDES" | grep " Immutable")
 		# | tee -a $LOCKFILE
 		echo $(echo -n "$INCFILES" | grep -c '^') immutable includes files
 	fi
 	
 	# - check lock for wp-admin dir files -
 	if [ -d "$ADMIN" ]; then
-		ADMINFILES=$(lsattr -R -l $ADMIN | grep " Immutable")
+		ADMINFILES=$(lsattr -R -l "$ADMIN" | grep " Immutable")
 		# | tee -a $LOCKFILE
 		echo $(echo -n "$ADMINFILES" | grep -c '^') immutable admin files
 	fi
@@ -463,11 +527,11 @@ function checkowners {
 	# - check permissions -
 	if [ -n "$SITEGROUP" ]; then
 		# - check owner / group mismatches -
-		yellow "*"; printf " Searching '"; green $SITENAME; echo "' for files with mismatching owner/group permissions..."
+		yellow "*"; printf " Searching '"; green "$SITENAME"; echo "' for files with mismatching owner/group permissions..."
 		OUTPUT=$(find "$SITEPATH" \( ! -user "$SITEUSER" -o ! -group "$SITEGROUP" \) )
 	else 
 		# - check for owner mismatches -
-		yellow "*"; printf " Searching '"; green $SITENAME; echo "' for files with mismatching owner permissions..."
+		yellow "*"; printf " Searching '"; green "$SITENAME"; echo "' for files with mismatching owner permissions..."
 		OUTPUT=$(find "$SITEPATH" ! -user "$SITEUSER")
 	fi
 	echo "$OUTPUT"
@@ -479,14 +543,14 @@ function checkowners {
 function fixowners {
 	
 	# - maybe unlock core -
-	if [ "$SITELOCKING" == "true" ]; then
-		unlockcore
-	fi
+	if [ "$SITELOCKING" == "true" ]; then unlockcore; fi
+	
+	# BASEFILES=(".htaccess" "index.php" "wp-activate.php" "wp-blog-header.php" "wp-comments-post.php" "wp-config.php" "wp-config-sample.php" "wp-cron.php" "wp-links-opml.php" "wp-login.php" "wp-mail.php" "wp-settings.php" "wp-signup.php" "wp-trackback.php" "xmlrpc.php")
 	
 	# - fix permissions -
 	if [ -n "$SITEGROUP" ]; then
 		# - fix owner / group permissions -
-		yellow "***"; printf " Fixing owner/group permissions on '"; green $SITENAME; echo "'..."
+		yellow "***"; printf " Fixing owner/group permissions on '"; green "$SITENAME"; echo "'..."
 		chown -R "$SITEUSER":"$SITEGROUP" "$SITEPATH"
 
 		# for BASEFILE in "${BASEFILES[@]}"; do
@@ -497,7 +561,7 @@ function fixowners {
 		# chown -R "$SITEUSER":"$SITEGROUP" "$SITEPATH"/wp-includes
 	else
 		# - fix owner permissions -
-		yellow "***"; printf " Fixing owner permissions on '"; green $SITENAME; echo "'..."
+		yellow "***"; printf " Fixing owner permissions on '"; green "$SITENAME"; echo "'..."
 		chown -R "$SITEUSER" "$SITEPATH"
 		
 		# for BASEFILE in "${BASEFILES[@]}"; do
@@ -509,9 +573,7 @@ function fixowners {
 	fi
 
 	# - maybe relock core -	
-	if [ "$SITELOCKING" == "true" ]; then
-		lockcore
-	fi
+	if [ "$SITELOCKING" == "true" ]; then lockcore; fi
 }
 
 
@@ -532,7 +594,7 @@ function listplugins {
 
 	if [ -z "$PLUGIN" ]; then
 	
-		yellow "*"; printf " Listing all plugins for '"; green $SITENAME; echo "'..."
+		yellow "*"; printf " Listing all plugins for '"; green "$SITENAME"; echo "'..."
 		echo "$OUTPUT"; echo ""
 	
 	else 
@@ -541,17 +603,17 @@ function listplugins {
 			for PLUGIN in "${PLUGINS[@]}"; do
 				if [[ "$OUTPUT" == *"$PLUGIN"* ]]; then
 					VERSION=$(grep "$PLUGIN" <<< "$OUTPUT" | awk '{print $4}');
-					yellow "*"; printf " Plugin with slug "; cyan $PLUGIN; printf " found on site "; green $SITENAME; printf " ("; yellow $VERSION; echo ")"
+					yellow "*"; printf " Plugin with slug "; cyan "$PLUGIN"; printf " found on site "; green "$SITENAME"; printf " ("; yellow "$VERSION"; echo ")"
 				else 
-					red "*"; printf " Plugin with slug "; cyan $PLUGIN; printf " not found on site "; green $SITENAME; echo ""
+					red "*"; printf " Plugin with slug "; "cyan $PLUGIN"; printf " not found on site "; green "$SITENAME"; echo ""
 				fi
 			done
 		else 
 			if [[ "$OUTPUT" == *"$PLUGIN"* ]]; then
 				VERSION=$(grep "$PLUGIN" <<< "$OUTPUT" | awk '{print $4}');
-				yellow "*"; printf " Plugin with slug "; cyan $PLUGIN; printf " found on site "; green $SITENAME; printf " ("; yellow $VERSION; echo ")"
+				yellow "*"; printf " Plugin with slug "; cyan "$PLUGIN"; printf " found on site "; green "$SITENAME"; printf " ("; yellow "$VERSION"; echo ")"
 			else 
-				red "*"; printf " Plugin with slug "; cyan $PLUGIN; printf " not found on site "; green $SITENAME; echo ""
+				red "*"; printf " Plugin with slug "; cyan "$PLUGIN"; printf " not found on site "; green "$SITENAME"; echo ""
 			fi
 		fi
 	fi
@@ -565,17 +627,15 @@ function checkplugin {
 	local PLUGIN=$1
 
 	# - get plugin list -
-	yellow "*"; printf " Checking for plugin(s) on "; green $SITENAME; echo ": "
+	yellow "*"; printf " Checking for plugin(s) on "; green "$SITENAME"; echo ": "
 	INFO=$(sudo -u "$SITEUSER" wp plugin list --fields=name,status,version,update,update_version --path="$SITEPATH" --skip-plugins | tail -n +2)
 
 	# - check for empty / 'all' -
-	if [ -z "$PLUGIN" ]; then
-		PLUGIN="all"
-	fi
+	if [ -z "$PLUGIN" ]; then PLUGIN="all"; fi
 	if [ "$PLUGIN" == "all" ]; then
 		PLUGINS=()
 		while IFS= read -r -a LINE; do
-			PLUGINS+=($(awk '{print $1}' <<< $LINE))		
+			PLUGINS+=($(awk '{print $1}' <<< "$LINE"))
 		done <<< "$INFO"
 	else 
 		IFS="," read -r -a PLUGINS <<< "$PLUGIN"
@@ -646,12 +706,12 @@ function installplugin {
 	SUCCESS="Plugin installed successfully."
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 	for PLUGIN in "${PLUGINS[@]}"; do
-		yellow "***"; printf " Installing plugin "; cyan $PLUGIN; printf " on "; green $SITENAME; echo "..."
+		yellow "***"; printf " Installing plugin "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
 		OUTPUT=$(sudo -u "$SITEUSER" wp plugin install "$PLUGIN" --path="$SITEPATH" --skip-plugins)
-		checkresult $OUTPUT $SUCCESS
+		checkresult "$OUTPUT" "$SUCCESS"
 		if [ "$RESULT" == "failed" ]; then
 			OUTPUT=$(sudo -u "$SITEUSER" wp plugin install "$PLUGIN" --path="$SITEPATH")
-			checkresult $OUTPUT $SUCCESS
+			checkresult "$OUTPUT" "$SUCCESS"
 		fi
 		echo "$OUTPUT"
 	done
@@ -666,10 +726,10 @@ function installactivateplugin {
 
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 	for PLUGIN in "${PLUGINS[@]}"; do
-		yellow "****"; printf " Installing and activating plugin "; cyan $PLUGIN; printf " on "; green $SITENAME; echo "..."
-		installplugin $PLUGIN
+		yellow "****"; printf " Installing and activating plugin "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
+		installplugin "$PLUGIN"
 		if [ "$RESULT" == "success" ]; then
-			activateplugin $PLUGIN
+			activateplugin "$PLUGIN"
 		fi
 	done
 }
@@ -681,15 +741,24 @@ function reinstallplugin {
 	
 	local PLUGIN=$1
 
-	# TODO: backup plugin before deleting? (as may have no valid install source?)
-
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 	for PLUGIN in "${PLUGINS[@]}"; do
-		yellow "****"; printf " Reinstalling plugin "; cyan $PLUGIN; printf " on "; green $SITENAME; echo "..."
-		deleteplugin $PLUGIN
-		if [ "$RESULT" == "success" ]; then
-			installplugin $PLUGIN
+
+		# TODO: backup plugin before deleting? (as install may fail?)
+	
+		# - output reinstalling plugin message -
+		yellow "****"; printf " Reinstalling plugin "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
+		
+		# - delete existing plugin -
+		deleteplugin "$PLUGIN"
+		
+		# - install plugin -
+		if [ "$RESULT" == "success" ]; then 
+			installplugin "$PLUGIN"
 		fi
+		
+		# TODO: restore backup on failure
+		
 	done
 }
 
@@ -703,9 +772,9 @@ function uninstallplugin {
 	SUCCESS="Uninstalled and deleted"
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 	for PLUGIN in "${PLUGINS[@]}"; do
-		yellow "***"; printf " Uninstalling plugin "; cyan $PLUGIN; printf " from "; green $SITENAME; echo "..."		
+		yellow "***"; printf " Uninstalling plugin "; cyan "$PLUGIN"; printf " from "; green "$SITENAME"; echo "..."		
 		OUTPUT=$(sudo -u "$SITEUSER" wp plugin uninstall "$PLUGIN" --path="$SITEPATH")
-		checkresult $OUTPUT $SUCCESS
+		checkresult "$OUTPUT" "$SUCCESS"
 		if [ "$RESULT" == "failed" ]; then
 			OUTPUT=$(sudo -u "$SITEUSER" wp plugin uninstall "$PLUGIN" --path="$SITEPATH" --skip-plugins); fi
 		echo "$OUTPUT"
@@ -722,12 +791,12 @@ function activateplugin {
 	SUCCESS="Success: Plugin"
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 	for PLUGIN in "${PLUGINS[@]}"; do
-		yellow "***"; printf " Activating plugin "; cyan $PLUGIN; printf " on "; green $SITENAME; echo "..."
+		yellow "***"; printf " Activating plugin "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
 		OUTPUT=$(sudo -u "$SITEUSER" wp plugin activate "$PLUGIN" --path="$SITEPATH" --skip-plugins)
-		checkresult $OUTPUT $SUCCESS
+		checkresult "$OUTPUT" "$SUCCESS"
 		if [ "$RESULT" == "failed" ]; then
 			OUTPUT=$(sudo -u "$SITEUSER" wp plugin activate "$PLUGIN" --path="$SITEPATH" --skip-plugins)
-			checkresult $OUTPUT $SUCCESS
+			checkresult "$OUTPUT" "$SUCCESS"
 		fi
 		echo "$OUTPUT"
 	done
@@ -743,12 +812,12 @@ function deactivateplugin {
 	SUCCESS="Success: Deactivated"
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 	for PLUGIN in "${PLUGINS[@]}"; do
-		yellow "***"; printf " Deactivating plugin "; cyan $PLUGIN; printf " on "; green $SITENAME; echo "..."
+		yellow "***"; printf " Deactivating plugin "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
 		OUTPUT=$(sudo -u "$SITEUSER" wp plugin deactivate "$PLUGIN" --path="$SITEPATH" --skip-plugins)
-		checkresult $OUTPUT $SUCCESS
+		checkresult "$OUTPUT" "$SUCCESS"
 		if [ "$RESULT" == "failed" ]; then
 			OUTPUT=$(sudo -u "$SITEUSER" wp plugin deactivate "$PLUGIN" --path="$SITEPATH" --skip-plugins)
-			checkresult $OUTPUT $SUCCESS
+			checkresult "$OUTPUT" "$SUCCESS"
 		fi
 		echo "$OUTPUT"
 	done
@@ -764,18 +833,23 @@ function deleteplugin {
 	SUCCESS="Success: Deleted"	
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 	for PLUGIN in "${PLUGINS[@]}"; do
-		yellow "***"; printf " Deleting plugin "; cyan $PLUGIN; printf " on "; green $SITENAME; echo "..."
+
+		# - deactivate plugin first -
+		deactivateplugin "$PLUGIN"
+
+		# - delete the plugin -
+		yellow "***"; printf " Deleting plugin "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
 		OUTPUT=$(sudo -u "$SITEUSER" wp plugin delete "$PLUGIN" --path="$SITEPATH" --skip-plugins)
-		checkresult $OUTPUT $SUCCESS
+		checkresult "$OUTPUT" "$SUCCESS"
 		if [ "$RESULT" == "failed" ]; then
 			PLUGINPATH="$SITEPATH"wp-content/plugins/"$PLUGIN"
 			if [ -d "$PLUGINPATH" ]; then
-				rm -rf $PLUGINPATH			
+				sudo -u "$SITEUSER" rm -rf "$PLUGINPATH"
 				if [ -d "$PLUGINPATH" ]; then
-					red "Failed"; printf ": Could not delete plugin "; cyan $PLUGIN; echo "."
+					red "Failed"; printf ": Could not delete plugin "; cyan "$PLUGIN"; echo "."
 					RESULT="failed"
 				else 
-					RESULT="success"; yellow "Manually Deleted plugin"; cyan #PLUGIN
+					RESULT="success"; yellow "Manually Deleted plugin"; cyan "$PLUGIN"; echo "."
 				fi
 			fi
 		fi
@@ -789,10 +863,8 @@ function updateplugin {
 	
 	local PLUGIN=$1
 	
-	# TODO: handle alternate plugin update sources ?
-	
-	# TODO: handle minor/patch/version switches ?
-	# ref: https://wordpress.stackexchange.com/questions/290018/can-i-upgrade-a-plugin-to-a-specific-version#290019	
+	# TODO: handle plugin version changes ?
+	# ref: https://wordpress.stackexchange.com/questions/290018/can-i-upgrade-a-plugin-to-a-specific-version#290019
 
 	SUCCESS="Plugin updated successfully."
 	if [ "$PLUGIN" == "all" ]; then
@@ -800,12 +872,12 @@ function updateplugin {
 	else
 		IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 		for PLUGIN in "${PLUGINS[@]}"; do
-			yellow "***"; printf " Updating plugin "; cyan $PLUGIN; printf " on "; green $SITENAME; echo "..."
+			yellow "***"; printf " Updating plugin "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
 			OUTPUT=$(sudo -u "$SITEUSER" wp plugin update "$PLUGIN" --path="$SITEPATH" --skip-plugins)
-			checkresult $OUTPUT $SUCCESS
+			checkresult "$OUTPUT" "$SUCCESS"
 			if [ "$RESULT" == "failed" ]; then
 				OUTPUT=$(sudo -u "$SITEUSER" wp plugin update "$PLUGIN" --path="$SITEPATH" --skip-plugins)
-				checkresult $OUTPUT $SUCCESS
+				checkresult "$OUTPUT" "$SUCCESS"
 			fi
 			echo "$OUTPUT"
 		done
@@ -817,17 +889,18 @@ function updateplugin {
 # ------------------ #
 function updateallplugins {
 	
-	# TODO: maybe add an update all confirmation prompt?
-	yellow "****"; printf " Updating "; cyan "ALL"; printf " plugins on "; green $SITENAME; echo "..."
+	# TODO: maybe add an update all confirmation prompt ?
+	
+	yellow "****"; printf " Updating "; cyan "ALL"; printf " plugins on "; green "$SITENAME"; echo "..."
 	
 	OUTPUT=$(sudo -u "$SITEUSER" wp plugin update --all --path="$SITEPATH" --skip-plugins)
 
 	# TODO: define success for all plugins updated?
 	# SUCCESS=""
-	# checkresult $OUTPUT $SUCCESS
+	# checkresult "$OUTPUT" "$SUCCESS"
 	# if [ "$RESULT" == "failed" ]; then
 	#	OUTPUT=$(sudo -u "$SITEUSER" wp plugin update --all --path="$SITEPATH"); 
-	#	checkresult $OUTPUT $SUCCESS	
+	#	checkresult "$OUTPUT" "$SUCCESS"	
 	# fi
 
 	echo "$OUTPUT"
@@ -843,9 +916,9 @@ function updateallplugins {
 # ----------- #
 function listthemes {
 
-	local THEMES=$1
+	local THEME=$1
 
-	yellow "*"; printf " Listing theme(s( for '"; green $SITENAME; echo "'..."
+	yellow "*"; printf " Listing theme(s) for "; green "$SITENAME"; echo "..."
 	# OUTPUT=$(sudo -u "$SITEUSER" wp theme list --path="$SITEPATH")
 	# echo "$OUTPUT"; echo ""
 
@@ -853,13 +926,11 @@ function listthemes {
 	INFO=$(sudo -u "$SITEUSER" wp theme list --fields=name,status,version,update,update_version --path="$SITEPATH" --skip-plugins | tail -n +2)
 
 	# - check for empty / 'all' -
-	if [ -z "$THEME" ]; then
-		THEME="all"
-	fi
+	if [ -z "$THEME" ]; then THEME="all"; fi
 	if [ "$THEME" == "all" ]; then
 		THEMES=()
 		while IFS= read -r -a LINE; do
-			THEMES+=($(awk '{print $1}' <<< $LINE))		
+			THEMES+=($(awk '{print $1}' <<< "$LINE"))
 		done <<< "$INFO"
 	else 
 		IFS="," read -r -a THEMES <<< "$THEME"
@@ -890,7 +961,7 @@ function listthemes {
 			   COLUMNS+=("$COLUMN")
 			done <<< "$THEMEINFO"
 
-			# - plugin status -
+			# - theme status -
 			OUTPUT+="|"
 			if [ "${COLUMNS[1]}" == "active" ]; then
 				OUTPUT+=$(green "Active")
@@ -898,7 +969,7 @@ function listthemes {
 				OUTPUT+=$(blue "Inactive")
 			fi
 
-			# - plugin version -
+			# - theme version -
 			OUTPUT+="|"; 
 			if [ -n "${COLUMNS[2]}" ]; then
 				OUTPUT+=$(yellow "${COLUMNS[2]}")
@@ -906,7 +977,7 @@ function listthemes {
 				OUTPUT+="-"
 			fi
 
-			# - plugin updates -
+			# - theme updates -
 			if [ "${COLUMNS[3]}" == "available" ]; then
 				OUTPUT+="|"; OUTPUT+=$(yellow "${COLUMNS[4]}"); OUTPUT+=" available"
 			fi
@@ -935,13 +1006,14 @@ function checktheme {
 	if [ -n "$TEMPLATE" ]; then
 	
 		# - get template version from style.css -
-		TEMPLATEPATH=$SITEPATH"wp-content/themes/"$TEMPLATE"/style.css"
-		TEMPLATEVERSION=$(grep 'Version:' $TEMPLATEPATH | awk '{print $2}' | tr -d '\r')
+		TEMPLATEPATH="$SITEPATH""wp-content/themes/""$TEMPLATE""/style.css"
+		# TODO: ensure getting first line match only
+		TEMPLATEVERSION=$(grep 'Version:' "$TEMPLATEPATH" | awk '{print $2}' | tr -d '\r')
 
-		green $SITENAME;
+		green "$SITENAME";
 		if [ "$TEMPLATE" == "$STYLESHEET" ]; then
 			# - output theme version -
-			printf " Theme: "; cyan $TEMPLATE; printf " "; yellow $TEMPLATEVERSION; printf " (No Parent/Child)"
+			printf " Theme: "; cyan "$TEMPLATE"; printf " "; yellow "$TEMPLATEVERSION"; printf " (No Parent/Child)"
 			
 			# - check if theme update is available -
 			UPDATE=$(sudo -u "$SITEUSER" wp theme list -fields=name,update,update_version | grep "$TEMPLATE")
@@ -951,11 +1023,14 @@ function checktheme {
 				printf "(Update to "; yellow "$VERSION"; printf " available.)"
 			fi
 		else 
+			# - get stylesheet version from style.css -
+			STYLEPATH="$SITEPATH""wp-content/themes/""$STYLESHEET""/style.css"
+			# TODO: ensure getting first line match only
+			STYLEVERSION=$(grep 'Version:' "$STYLEPATH" | awk '{print $2}' | tr -d '\r')
+
 			# - output parent and child theme versions -
-			STYLEPATH=$SITEPATH"wp-content/themes/"$STYLESHEET"/style.css"
-			STYLEVERSION=$(grep 'Version:' $STYLEPATH | awk '{print $2}' | tr -d '\r')
-			printf " - Child Theme "; cyan $STYLESHEET; printf " "; yellow $STYLEVERSION
-			printf " - Parent Theme: "; cyan $TEMPLATE; printf " "; yellow $TEMPLATEVERSION
+			printf " - Child Theme "; cyan "$STYLESHEET"; printf " "; yellow "$STYLEVERSION"
+			printf " - Parent Theme: "; cyan "$TEMPLATE"; printf " "; yellow "$TEMPLATEVERSION"
 			
 			# - check if theme updates are  available -
 			UPDATES=$(sudo -u "$SITEUSER" wp theme list --fields=name,update,update_version)
@@ -978,7 +1053,7 @@ function checktheme {
 		fi
 		echo ""
 	else
-		red "Warning:"; printf " could not retrieve template option value for "; yellow $SITENAME; echo " "
+		red "Warning:"; printf " could not retrieve template option value for "; yellow "$SITENAME"; echo " "
 	fi
 }
 
@@ -986,17 +1061,25 @@ function checktheme {
 # Activate Theme #
 # -------------- #
 function activatetheme {
-	local THEME=$1
 
+	local THEME; THEME=$1
+
+	# TODO: maybe handle multisite theme activation for blog ID ?
+	
 	SUCCESS="Switched to"
 	if [[ "$THEME" == *","* ]]; then
+		# - output only activate one theme message -
 		red "Failed! You cannot activate multiple themes. Choose one!"; echo "";
 	else 
+		# - output activating theme message -
+		yellow "***"; printf " Activating theme "; cyan "$THEME"; printf " on "; green "$SITENAME"; echo "..."
+
+		# - activate the specified theme -
 		OUTPUT=$(sudo -u "$SITEUSER" wp theme activate "$THEME" --skip-plugins)
-		checkresult $OUTPUT $SUCCESS
+		checkresult "$OUTPUT" "$SUCCESS"
 		if [ "$RESULT" == "failed" ]; then
 			OUTPUT=$(sudo -u "$SITEUSER" wp theme activate "$THEME" --path="$SITEPATH" --skip-plugins)
-			checkresult $OUTPUT $SUCCESS
+			checkresult "$OUTPUT" "$SUCCESS"
 		fi
 		echo "$OUTPUT";
 	fi
@@ -1007,16 +1090,19 @@ function activatetheme {
 # ------------- #
 function installtheme {
 	
-	local THEMES=$1
+	local THEMES; THEMES=$1
+	
+	# - output installing themes message -
+	yellow "***"; printf " Installing theme(s) "; cyan "$THEME"; printf " on "; green "$SITENAME"; echo "..."
 
 	SUCCESS="Theme installed successfully."
 	IFS="," read -r -a THEMESLUGS <<< "$THEMES"
 	for THEME in "${THEMESLUGS[@]}"; do
 		OUTPUT=$(sudo -u "$SITEUSER" wp theme install "$THEME" --path="$SITEPATH" --skip-plugins)
-		checkresult $OUTPUT
+		checkresult "$OUTPUT" "$SUCCESS"
 		if [ "$RESULT" == "failed" ]; then
 			OUTPUT=$(sudo -u "$SITEUSER" wp theme install "$THEME" --path="$SITEPATH" --skip-plugins)
-			checkresult $OUTPUT $SUCCESS
+			checkresult "$OUTPUT" "$SUCCESS"
 		fi
 	done
 	echo "$OUTPUT";
@@ -1026,15 +1112,22 @@ function installtheme {
 # Install Activate Theme #
 # ---------------------- #
 function installactivatetheme {
-	local THEME=$1
 
+	local THEME; THEME=$1
+	
 	if [[ "$THEME" == *","* ]]; then
-		red "Failed! You cannot activate multiple themes. Choose one!"; echo "";
+		# - output cannot activate multiple themes message -
+		red "Error!"; sprintf " You cannot activate multiple themes. Choose one!"; echo "";
 	else 
-		installtheme $THEME;
+		# - output installing and activating theme message -
+		yellow "***"; printf " Installing and activating theme "; cyan "$THEME"; printf " on site "; green "$SITENAME"; echo "..."
 
+		# - install specified theme -
+		installtheme "$THEME"
+
+		# - activate if install successful -
 		if [ "$RESULT" == 'success' ]; then
-			activatetheme $THEME;
+			activatetheme "$THEME"
 		fi
 	fi
 }
@@ -1044,16 +1137,28 @@ function installactivatetheme {
 # --------------- #
 function reinstalltheme {
 	
-	local THEMES=$1
+	local THEMES; THEMES=$1
+	
+	# - output activating theme message -
+	yellow "***"; printf " Reinstalling theme(s) "; cyan "$THEME"; printf " on site "; green "$SITENAME"; echo "..."
 
 	IFS="," read -r -a THEMESLUGS <<< "$THEMES"
 	for THEME in "${THEMESLUGS[@]}"; do
-		THEMEPATH=$SITEPATH"wp-content/"$THEME"/"
-		BACKUPPATH=$SITEPATH"wp-content/"$THEME"-backup/"
-		rm -rf "$BACKUPPATH"
-		mv "$THEMEPATH" "$BACKUPPATH"
-		installtheme $THEME			
-		# TODO: check for success and maybe restore backup
+	
+		# - backup existing theme -
+		THEMEPATH="$SITEPATH""wp-content/""$THEME""/"
+		BACKUPPATH="$SITEPATH""wp-content/""$THEME""-backup/"
+		sudo -u "$SITEUSER" rm -rf "$BACKUPPATH"
+		sudo -u "$SITEUSER" mv "$THEMEPATH" "$BACKUPPATH"
+		
+		# - reinstall theme -
+		installtheme "$THEME"
+		
+		# TODO: check for failure to maybe restore backup
+		# if [ "$RESULT" == "failed" ]; then
+		#	sudo -u "$SITEUSER" rm -rf "$THEMEPATH"
+		#	sudo -u "$SITEUSER" mv "$BACKUPPATH" "$THEMEPATH" 
+		# fi
 	done
 }
 
@@ -1064,22 +1169,25 @@ function updatetheme {
 	
 	local THEMES=$1
 
+	# - output updating theme message -
+	yellow "***"; printf " Updating theme(s) "; cyan "$THEME"; printf " on site "; green "$SITENAME"; echo "..."
+
 	SUCCESS="Theme updated successfully."
 	if [ "$THEMES" == "all" ]; then
 		OUTPUT=$(sudo -u "$SITEUSER" wp theme update --all --path="$SITEPATH" --skip-plugins)
-		checkresult $OUTPUT $SUCCESS
+		checkresult "$OUTPUT" "$SUCCESS"
 		if [ "$RESULT" == "failed" ]; then
 			OUTPUT=$(sudo -u "$SITEUSER" wp theme update --all --path="$SITEPATH" --skip-plugins)
-			checkresult $OUTPUT $SUCCESS
+			checkresult "$OUTPUT" "$SUCCESS"
 		fi
 	else
 		IFS="," read -r -a THEMESLUGS <<< "$THEMES"
 		for THEME in "${THEMESLUGS[@]}"; do
 			OUTPUT=$(sudo -u "$SITEUSER" wp theme update "$THEME" --path="$SITEPATH" --skip-plugins)
-			checkresult $OUTPUT $SUCCESS
+			checkresult "$OUTPUT" "$SUCCESS"
 			if [ "$RESULT" == "failed" ]; then
 				OUTPUT=$(sudo -u "$SITEUSER" wp theme update "$THEME" --path="$SITEPATH" --skip-plugins); 
-				checkresult $OUTPUT $SUCCESS
+				checkresult "$OUTPUT" "$SUCCESS"
 			fi
 		done
 	fi
@@ -1096,62 +1204,56 @@ function updatetheme {
 # --------- #
 function synccore {
 
-	# - maybe unlock core -	
-	if [ "$SITELOCKING" == "true" ]; then
-		unlockcore
-	fi
-
-	local CORESLUG=$1
 	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH
+	local CORESLUG; CORESLUG=$1; 
 
-	if [ -f "$SOURCESCONF" ]; then
-	
-		while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
+	# - maybe unlock core -	
+	if [ "$SITELOCKING" == "true" ]; then unlockcore; fi
 
-			# - ignore lines starting with # -
-			if [ ! "${SOURCE:0:1}" == "#" ]; then
+	# - read sources config -
+	while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
 
-				DATA=( $SOURCE )
-				SOURCETYPE=${DATA[0]}
-				SOURCESLUG=${DATA[1]}
-				SOURCEPATH=$(echo ${DATA[2]} | tr -d '\r')
+		# - ignore lines starting with # -
+		if [ ! "${SOURCE:0:1}" == "#" ]; then
 
-				if [ "$SOURCETYPE" == "core" ]; then
+			DATA=($SOURCE)
+			SOURCETYPE=${DATA[0]}
+			SOURCESLUG=${DATA[1]}
+			SOURCEPATH=$(echo "${DATA[2]}" | tr -d '\r')
 
-					# TODO: handle .zip source files?
-					# if [ -f "$SOURCEPATH" ]; then
-					#	if [ ?is-zip? $SOURCEPATH ]; then
-					# 		COREZIP="true"
-					#		...extract zip to a temp dir...
-					#		SOURCEPATH=$TEMPDIR
-					#	fi
-					# fi
+			if [ "$SOURCETYPE" == "core" ]; then
 
-					# - sync core from source -
-					if [ -d "$SOURCEPATH" ]; then
-						if [ "$CORESLUG" == $SOURCESLUG ]; then
-							# TODO: maybe use rsync --backup option?
-							sudo -u "$SITEUSER" rsync -av --delay-updates "$SOURCEPATH" "$SITEPATH"
-							RESULT="success"
-						fi
-					else
-						# - output invalid source directory message -
-						red "Warning: "; printf "Invalid source directory, check "; white "sources.conf"; printf " for "; yellow $SOURCESLUG; printf ". Skipping..."; echo " "
+				# TODO: handle .zip source files?
+				# if [ -f "$SOURCEPATH" ]; then
+				#	if [ ?is-zip? "$SOURCEPATH" ]; then
+				# 		COREZIP="true"
+				#		...extract zip to a temp dir...
+				#		SOURCEPATH=$TEMPDIR
+				#	fi
+				# fi
+
+				# - sync core from source -
+				if [ -d "$SOURCEPATH" ]; then
+					if [ "$CORESLUG" == "$SOURCESLUG" ]; then
+					
+						# - output syncing core message -
+						yellow "***"; printf " Syncing Core "; cyan "$SOURCESLUG"; printf " to site "; green "$SITENAME"; echo "..."
+					
+						# TODO: maybe use rsync --backup option?
+						sudo -u "$SITEUSER" rsync -av --delay-updates "$SOURCEPATH" "$SITEPATH"
+						RESULT="success"
 					fi
-
+				else
+					# - output invalid source directory message -
+					red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
 				fi
+
 			fi
-		done < $SOURCESCONF
-	else
-		# - output missing soures config file message -
-		red "Error!"; white "sources.conf"; printf " file is required to Core Sync."; echo " "
-	fi
+		fi
+	done < "$CONFIG"
 
 	# - maybe relock core -
-	if [ "$SITELOCKING" == "true" ]; then
-		lockcore
-	fi
-
+	if [ "$SITELOCKING" == "true" ]; then lockcore; fi
 }
 
 # ----------- #
@@ -1159,93 +1261,86 @@ function synccore {
 # ----------- #
 function syncplugin {
 	
-	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local PLUGINPATH
-	local PLUGINS=$1; local DOSYNC="false"
+	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local PLUGINPATH; local DOSYNC
+	local PLUGINS; PLUGINS=$1;
 
-	if [ -f "$SOURCESCONF" ]; then
+	# - read file without requiring it to end in a new line -
+	# ref: https://stackoverflow.com/a/31398490/5240159
+	while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
 
-		# - read file without requiring it to end in a new line -
-		# ref: https://stackoverflow.com/a/31398490/5240159
-		while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
+		# - ignore lines starting with # -
+		if [ ! "${SOURCE:0:1}" == "#" ]; then
 
-			# - ignore lines starting with # -
-			if [ ! "${SOURCE:0:1}" == "#" ]; then
+			# - expand source data -
+			DATA=($SOURCE)
+			SOURCETYPE=${DATA[0]}
+			SOURCESLUG=${DATA[1]}
+			SOURCEPATH=$(echo "${DATA[2]}" | tr -d '\r')
 
-				# - expand source data -
-				DATA=($SOURCE)
-				SOURCETYPE=${DATA[0]}
-				SOURCESLUG=${DATA[1]}
-				SOURCEPATH=$(echo ${DATA[2]} | tr -d '\r')
+			if [ "$SOURCETYPE" == "plugin" ]; then
 
-				if [ "$SOURCETYPE" == "plugin" ]; then
+				# TODO: handle .zip source files?
+				# if [ -f $SOURCEPATH ]; then
+				#	if [ ?is-zip? $SOURCEPATH ]; then
+				# 		PLUGINZIP="true"
+				#		...extract zip to temp dir...
+				#		SOURCEPATH=$TEMPDIR
+				#	fi
+				# fi
 
-					# TODO: handle .zip source files?
-					# if [ -f $SOURCEPATH ]; then
-					#	if [ ?is-zip? $SOURCEPATH ]; then
-					# 		PLUGINZIP="true"
-					#		...extract zip to temp dir...
-					#		SOURCEPATH=$TEMPDIR
-					#	fi
-					# fi
+				if [ -d "$SOURCEPATH" ]; then
 
-					if [ -d "$SOURCEPATH" ]; then
+					DOSYNC="false"
 
-						DOSYNC="false"
-
-						# - match plugin slugs -
-						if [ "$PLUGINS" == "all" ]; then
-							DOSYNC="true"; fi
-						if [ "$PLUGINS" == "$SOURCESLUG" ]; then
-							DOSYNC="true"; fi
-						if [[ "$PLUGINS" == *","* ]]; then
-							IFS="," read -r -a PLUGINSLUGS <<< "$PLUGINS"
-							for PLUGIN in "${PLUGINSLUGS[@]}"; do
-								if [ "$PLUGIN" == "$SOURCESLUG" ]; then
-									DOSYNC="true"; 
-								fi
-							done
-						fi
-
-						if [ "$DOSYNC" == "true" ]; then
-						
-							# - maybe create plugin dir -
-							PLUGINPATH=$SITEPATH"wp-content/plugins/"$SOURCESLUG"/"
-							if [ ! -d "$PLUGINPATH" ]; then
-								sudo -u "$SITEUSER" mkdir "$PLUGINPATH"
-								chown "$SITEUSER" "$PLUGINPATH"
+					# - match plugin slugs -
+					if [ "$PLUGINS" == "all" ]; then
+						DOSYNC="true"; fi
+					if [ "$PLUGINS" == "$SOURCESLUG" ]; then
+						DOSYNC="true"; fi
+					if [[ "$PLUGINS" == *","* ]]; then
+						IFS="," read -r -a PLUGINSLUGS <<< "$PLUGINS"
+						for PLUGIN in "${PLUGINSLUGS[@]}"; do
+							if [ "$PLUGIN" == "$SOURCESLUG" ]; then
+								DOSYNC="true"; 
 							fi
-
-							# - output plugin sync message -
-							printf "Syncing Plugin "; cyan $SOURCESLUG; printf " to site "; green $SITENAME; echo " "
-							
-							# - sync plugin from source -
-							# TODO: maybe use rsync --backup option?
-							sudo -u "$SITEUSER" rsync -av --delete --delay-updates "$SOURCEPATH" "$PLUGINPATH"
-
-							# - output synced info -							
-							printf "Plugin Path: "; cyan $SOURCEPATH; echo "";
-							printf "Synced to: "; green $PLUGINPATH; echo " "
-							
-							RESULT="success"
-						fi
-
-					else
-						# - output invalid source directory message -
-						red "Warning: "; printf "Invalid source directory, check "; white "sources.conf"; printf " for "; yellow $SOURCESLUG; printf ". Skipping..."; echo " "
+						done
 					fi
 
+					if [ "$DOSYNC" == "true" ]; then
+
+						# - maybe create plugin dir -
+						PLUGINPATH=$SITEPATH"wp-content/plugins/"$SOURCESLUG"/"
+						if [ ! -d "$PLUGINPATH" ]; then
+							sudo -u "$SITEUSER" mkdir "$PLUGINPATH"
+							chown "$SITEUSER" "$PLUGINPATH"
+						fi
+
+						# - output plugin sync message -
+						printf "Syncing Plugin "; cyan "$SOURCESLUG"; printf " to site "; green "$SITENAME"; echo " "
+
+						# - sync plugin from source -
+						# TODO: maybe use rsync --backup option?
+						sudo -u "$SITEUSER" rsync -av --delete --delay-updates "$SOURCEPATH" "$PLUGINPATH"
+
+						# - output synced info -							
+						printf "Plugin Path: "; cyan "$SOURCEPATH"; echo "";
+						printf "Synced to: "; green "$PLUGINPATH"; echo " "
+
+						RESULT="success"
+					fi
+
+				else
+					# - output invalid source directory message -
+					red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
 				fi
+
 			fi
-		done < $SOURCESCONF
-
-		if [ "$RESULT" != "success" ]; then
-			# - no matching plugin slug message -
-			red "Error! "; printf "No matching plugin slug found, check "; white "sources.conf"; printf " for "; yellow $PLUGINS; echo "."
 		fi
+	done < "$CONFIG"
 
-	else
-		# - missing source config file message -
-		red "Error!"; white "sources.conf"; printf " file is required to perform Plugin Sync."; echo " "
+	if [ "$RESULT" != "success" ]; then
+		# - no matching plugin slug message -
+		red "Error!"; printf " No matching plugin slug found, check "; white "wpx.conf"; printf " for "; yellow "$PLUGINS"; echo "."
 	fi
 }
 
@@ -1254,26 +1349,26 @@ function syncplugin {
 # ------------------------ #
 function syncactivateplugin {
 
-	local PLUGIN=$1
+	local PLUGIN; PLUGIN=$1
 
+	# - loop plugin slugs -
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 	for PLUGIN in "${PLUGINS[@]}"; do
 	
 		# - output syncing and activating message -
-		yellow "****"; printf " Syncing and activating plugin "; cyan $PLUGIN; printf " on "; green $SITENAME; echo "..."
+		yellow "****"; printf " Syncing and activating plugin "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
 		
 		# - sync plugin -
-		syncplugin $PLUGIN
+		syncplugin "$PLUGIN"
 
 		# - check syncing result before activating -
 		if [ "$RESULT" == "success" ]; then
 			# - activate plugin -
-			activateplugin $PLUGIN
+			activateplugin "$PLUGIN"
 		else 
 			# - output sync failed message -
-			red "Failed!"; printf "Plugin "; cyan $PLUGIN; echo "not activated."
+			red "Failed!"; printf "Plugin "; cyan "$PLUGIN"; echo "not activated."
 		fi
-
 	done
 }
 
@@ -1282,92 +1377,86 @@ function syncactivateplugin {
 # ---------- #
 function synctheme {
 	
-	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local THEMEPATH
-	local THEMES=$1; local DOSYNC="false"
+	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local THEMEPATH; local DOSYNC
+	local THEMES; THEMES=$1;
 
-	if [ -f "$SOURCESCONF" ]; then
-	
-		# - read source config lines -
-		while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
+	# - read source config lines -
+	while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
 
-			# - ignore lines starting with # -
-			if [ ! "${SOURCE:0:1}" == "#" ]; then
-			
-				# - expand source data -
-				DATA=($SOURCE)
-				SOURCETYPE=${DATA[0]}
-				SOURCESLUG=${DATA[1]}
-				SOURCEPATH=$(echo ${DATA[2]} | tr -d '\r')
+		# - ignore lines starting with # -
+		if [ ! "${SOURCE:0:1}" == "#" ]; then
 
-				if [ "$SOURCETYPE" == "theme" ]; then
+			# - expand source data -
+			DATA=($SOURCE)
+			SOURCETYPE=${DATA[0]}
+			SOURCESLUG=${DATA[1]}
+			SOURCEPATH=$(echo "${DATA[2]}" | tr -d '\r')
 
-					# TODO: handle .zip source files?
-					# if [ -f "$SOURCEPATH" ]; then
-					#	if [ ?is-zip? $SOURCEPATH ]; then
-					# 		THEMEZIP="true"
-					#		...extract zip to temp dir...
-					#		SOURCEPATH=$TEMPDIR
-					#	fi
-					# fi
+			if [ "$SOURCETYPE" == "theme" ]; then
 
-					if [ -d "$SOURCEPATH" ]; then
+				# TODO: handle .zip source files?
+				# if [ -f "$SOURCEPATH" ]; then
+				#	if [ ?is-zip? $SOURCEPATH ]; then
+				# 		THEMEZIP="true"
+				#		...extract zip to temp dir...
+				#		SOURCEPATH=$TEMPDIR
+				#	fi
+				# fi
 
-						DOSYNC="false"
+				if [ -d "$SOURCEPATH" ]; then
 
-						# - match theme slugs -
-						if [ "$THEMES" == "all" ]; then
-							DOSYNC="true"; fi
-						if [ "$THEMES" == $SOURCESLUG ]; then
-							DOSYNC="true"; fi
-						if [[ "$THEMES" == *","* ]]; then
-							IFS="," read -r -a THEMESLUGS <<< "$THEMES"
-							for THEME in "${THEMESLUGS[@]}"; do
-								if [ "$THEME" == "$SOURCESLUG" ]; then
-									DOSYNC="true"; 
-								fi
-							done
-						fi
+					# - reset do sync flag -
+					DOSYNC="false"
 
-						if [ "$DOSYNC" == "true" ]; then
-						
-							# - maybe create theme dir -
-							THEMEPATH=$SITEPATH"wp-content/themes/"$SOURCESLUG"/"
-							if [ ! -d "$THEMEPATH" ]; then
-								sudo -u "$SITEUSER" mkdir "$THEMEPATH"
-								chown "$SITEUSER" "$THEMEPATH"
+					# - match theme slugs -
+					if [ "$THEMES" == "all" ]; then
+						DOSYNC="true"; fi
+					if [ "$THEMES" == "$SOURCESLUG" ]; then
+						DOSYNC="true"; fi
+					if [[ "$THEMES" == *","* ]]; then
+						IFS="," read -r -a THEMESLUGS <<< "$THEMES"
+						for THEME in "${THEMESLUGS[@]}"; do
+							if [ "$THEME" == "$SOURCESLUG" ]; then
+								DOSYNC="true"; 
 							fi
-
-							# - output syncing theme message -
-							printf "Syncing Theme "; cyan $SOURCESLUG; printf " to site "; green $SITENAME; echo " "
-
-							# - sync theme from source -							
-							# TODO: maybe use rsync --backup option?
-							sudo -u "$SITEUSER" rsync -av --delete --delay-updates "$SOURCEPATH" "$THEMEPATH"
-
-							# - output theme sync info -							
-							printf "Theme Path: "; cyan $SOURCEPATH; echo "";
-							printf "Synced to: "; green $THEMEPATH; echo " "
-							
-							RESULT="success"
-						fi
-
-					else
-						# - output invalid source directory message -
-						red "Warning: "; printf "Invalid source directory, check "; white "sources.conf"; printf " for "; yellow $SOURCESLUG; printf ". Skipping..."; echo " "
+						done
 					fi
 
+					if [ "$DOSYNC" == "true" ]; then
+
+						# - maybe create theme dir -
+						THEMEPATH=$SITEPATH"wp-content/themes/"$SOURCESLUG"/"
+						if [ ! -d "$THEMEPATH" ]; then
+							sudo -u "$SITEUSER" mkdir "$THEMEPATH"
+							chown "$SITEUSER" "$THEMEPATH"
+						fi
+
+						# - output syncing theme message -
+						printf "Syncing Theme "; cyan "$SOURCESLUG"; printf " to site "; green "$SITENAME"; echo " "
+
+						# - sync theme from source -							
+						# TODO: maybe use rsync --backup option?
+						sudo -u "$SITEUSER" rsync -av --delete --delay-updates "$SOURCEPATH" "$THEMEPATH"
+
+						# - output theme sync info -							
+						printf "Theme Path: "; cyan "$SOURCEPATH"; echo "";
+						printf "Synced to: "; green "$THEMEPATH"; echo " "
+
+						RESULT="success"
+					fi
+
+				else
+					# - output invalid source directory message -
+					red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
 				fi
+
 			fi
-		done < $SOURCESCONF
-		
-		if [ "$RESULT" != "success" ]; then
-			# - output no matching theme message -
-			red "Error! "; printf "No matching theme slug found, check "; white "sources.conf"; printf " for "; yellow $THEMES; echo "."
 		fi
-		
-	else
-		# - output missing source config file message -
-		red "Error! "; white "sources.conf"; printf " file is required to Theme Sync."; echo " "
+	done < "$CONFIG"
+
+	if [ "$RESULT" != "success" ]; then
+		# - output no matching theme message -
+		red "Error!"; printf " No matching theme slug found, check "; white "wpx.conf"; printf " for "; yellow "$THEMES"; echo "."
 	fi
 }
 
@@ -1375,200 +1464,196 @@ function synctheme {
 # Sync and Activate Theme #
 # ----------------------- #
 function syncactivatetheme {
-	local THEME=$1;
-	
+
+	local THEME; THEME=$1;
+		
 	if [[ "$THEME" == *","* ]]; then
+		# - output activate one theme only message -
 		red "Failed!"; printf "You cannot activate multiple themes. Choose one!"; echo "";
-	else 
-		synctheme $THEME;
+	else
+		# - output sync and activate theme message -
+		yellow "****"; printf " Syncing and activating theme "; cyan "$THEME"; printf " on "; green "$SITENAME"; echo "..."
+		
+		# - sync theme -
+		synctheme "$THEME";
+		
+		# - activate theme -
 		if [ "$RESULT" == 'success' ]; then
-			activatetheme $THEME;
+			activatetheme "$THEME"
 		fi
 	fi
 }
 
-# -------------------- #
-# Sync Must Use Plugin #
-# -------------------- #
+# ----------------------- #
+# Sync Must Use Plugin(s) #
+# ----------------------- #
 function syncmuplugin {
 	
-	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local PLUGINPATH
-	local PLUGINS=$1; local DOSYNC="false"
+	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local PLUGINPATH; local DOSYNC
+	local PLUGINS; PLUGINS=$1;
 
-	if [ -f "$SOURCESCONF" ]; then
+	# read file without requiring it to end in a new line
+	# ref: https://stackoverflow.com/a/31398490/5240159
+	while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
 
-		# read file without requiring it to end in a new line
-		# ref: https://stackoverflow.com/a/31398490/5240159
-		while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
+		# ignore lines starting with #
+		if [ ! "${SOURCE:0:1}" == "#" ]; then
 
-			# ignore lines starting with #
-			if [ ! "${SOURCE:0:1}" == "#" ]; then
+			DATA=($SOURCE)
+			SOURCETYPE=${DATA[0]}
+			SOURCESLUG=${DATA[1]}
+			SOURCEPATH=$(echo "${DATA[2]}" | tr -d '\r')
 
-				DATA=( $SOURCE )
-				SOURCETYPE=${DATA[0]}
-				SOURCESLUG=${DATA[1]}
-				SOURCEPATH=$(echo ${DATA[2]} | tr -d '\r')
+			if [ "$SOURCETYPE" == "muplugin" ]; then
 
-				if [ "$SOURCETYPE" == "muplugin" ]; then
+				# TODO: handle .zip source files?
+				# if [ -f $SOURCEPATH ]; then
+				#	if [ ?is-zip? $SOURCEPATH ]; then
+				# 		PLUGINZIP="true"
+				#		...extract zip to temp dir...
+				#		SOURCEPATH="$TEMPDIR"
+				#	fi
+				# fi
 
-					# TODO: handle .zip source files?
-					# if [ -f $SOURCEPATH ]; then
-					#	if [ ?is-zip? $SOURCEPATH ]; then
-					# 		PLUGINZIP="true"
-					#		...extract zip to temp dir...
-					#		SOURCEPATH=$TEMPDIR
-					#	fi
-					# fi
+				if [ -d "$SOURCEPATH" ]; then
 
-					if [ -d "$SOURCEPATH" ]; then
+					# - reset do sync flag -
+					DOSYNC="false"
 
-						DOSYNC="false"
-
-						# - check slug match -
-						if [ "$PLUGINS" == "all" ]; then
-							DOSYNC="true"; fi
-						if [ "$PLUGINS" == "$SOURCESLUG" ]; then
-							DOSYNC="true"; fi
-						if [[ "$PLUGINS" == *","* ]]; then
-							IFS="," read -r -a PLUGINSLUGS <<< "$PLUGINS"
-							for PLUGIN in "${PLUGINSLUGS[@]}"; do
-								if [ "$PLUGIN" == "$SOURCESLUG" ]; then
-									DOSYNC="true"; 
-								fi
-							done
-						fi
-
-						if [ "$DOSYNC" == "true" ]; then
-
-							# - maybe create mu-plugin dir -
-							PLUGINPATH=$SITEPATH"wp-content/mu-plugins/"
-							if [ ! -d "$PLUGINPATH" ]; then
-								sudo -u "$SITEUSER" mkdir "$PLUGINPATH"
-								chown "$SITEUSER" "$PLUGINPATH"
+					# - check slug match -
+					if [ "$PLUGINS" == "all" ]; then
+						DOSYNC="true"; fi
+					if [ "$PLUGINS" == "$SOURCESLUG" ]; then
+						DOSYNC="true"; fi
+					if [[ "$PLUGINS" == *","* ]]; then
+						IFS="," read -r -a PLUGINSLUGS <<< "$PLUGINS"
+						for PLUGIN in "${PLUGINSLUGS[@]}"; do
+							if [ "$PLUGIN" == "$SOURCESLUG" ]; then
+								DOSYNC="true"; 
 							fi
-
-							# - output syncing message -
-							printf "Syncing Must-Use Plugin "; cyan $SOURCESLUG; printf " to site "; green $SITENAME; echo " "
-							
-							# - sync must use plugin -
-							# TODO: maybe use rsync with --backup option?
-							# note: do not use --delete option!
-							sudo -u "$SITEUSER" rsync -av --delay-updates "$SOURCEPATH" "$PLUGINPATH"
-
-							# - output extra info -							
-							printf "Must Use Plugin Path: "; cyan $SOURCEPATH; echo "";
-							printf "Synced to: "; green $PLUGINPATH; echo " "
-							
-							RESULT="success"
-						fi
-
-					else
-						# - output invalid source directory message -
-						red "Warning: "; printf "Invalid source directory, check "; white "sources.conf"; printf " for "; yellow $SOURCESLUG; printf ". Skipping..."; echo " "
+						done
 					fi
 
+					if [ "$DOSYNC" == "true" ]; then
+
+						# - maybe create mu-plugin dir -
+						PLUGINPATH=$SITEPATH"wp-content/mu-plugins/"
+						if [ ! -d "$PLUGINPATH" ]; then
+							sudo -u "$SITEUSER" mkdir "$PLUGINPATH"
+							chown "$SITEUSER" "$PLUGINPATH"
+						fi
+
+						# - output syncing message -
+						printf "Syncing Must-Use Plugin "; cyan "$SOURCESLUG"; printf " to site "; green "$SITENAME"; echo " "
+
+						# - sync must use plugin -
+						# TODO: maybe use rsync with --backup option ?
+						# note: do not use --delete option!
+						sudo -u "$SITEUSER" rsync -av --delay-updates "$SOURCEPATH" "$PLUGINPATH"
+
+						# - output extra info -							
+						printf "Must Use Plugin Path: "; cyan "$SOURCEPATH"; echo "";
+						printf "Synced to: "; green "$PLUGINPATH"; echo " "
+
+						RESULT="success"
+					fi
+
+				else
+					# - output invalid source directory message -
+					red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
 				fi
+
 			fi
-		done < $SOURCESCONF
-
-		if [ "$RESULT" != "success" ]; then
-			# - output no matching slug message -
-			red "Error! "; printf "No matching must-use plugin slug found, check "; white "sources.conf"; printf " for "; yellow $PLUGINS; echo "."
 		fi
+	done < "$CONFIG"
 
-	else
-		# - output missing source config file message -
-		red "Error!"; white "sources.conf"; printf " file is required to perform Plugin Sync."; echo " "
+	if [ "$RESULT" != "success" ]; then
+		# - output no matching slug message -
+		red "Error!"; printf " No matching must-use plugin slug found, check "; white "wpx.conf"; printf " for "; yellow "$PLUGINS"; echo "."
 	fi
 }
 
-# ------------ #
-# Sync File(s) #
-# ------------ #
-# (relative to source directory)
-function syncfile {
+# -------------- #
+# Sync Dropin(s) #
+# -------------- #
+# (files relative to source directory)
+function syncdropin {
 	
-	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH
-	local FILES=$1; local DOSYNC="false"
+	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local DOSYNC
+	local FILES; FILES=$1
 
-	if [ -f "$SOURCESCONF" ]; then
+	# - read file without requiring it to end in a new line -
+	# ref: https://stackoverflow.com/a/31398490/5240159
+	while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
 
-		# - read file without requiring it to end in a new line -
-		# ref: https://stackoverflow.com/a/31398490/5240159
-		while IFS= read -a SOURCE || [ -n "$SOURCE" ]; do
+		# - ignore lines starting with # -
+		if [ ! "${SOURCE:0:1}" == "#" ]; then
 
-			# - ignore lines starting with # -
-			if [ ! "${SOURCE:0:1}" == "#" ]; then
+			# - expand source data -
+			DATA=($SOURCE)
+			SOURCETYPE=${DATA[0]}
+			SOURCESLUG=${DATA[1]}
+			SOURCEPATH=$(echo "${DATA[2]}" | tr -d '\r')
 
-				# - expand source data -
-				DATA=($SOURCE)
-				SOURCETYPE=${DATA[0]}
-				SOURCESLUG=${DATA[1]}
-				SOURCEPATH=$(echo ${DATA[2]} | tr -d '\r')
+			if [ "$SOURCETYPE" == "dropin" ]; then
 
-				if [ "$SOURCETYPE" == "file" ]; then
+				# TODO: handle .zip source files?
+				# if [ -f $SOURCEPATH ]; then
+				#	if [ ?is-zip? $SOURCEPATH ]; then
+				# 		PLUGINZIP="true"
+				#		...extract zip to temp dir...
+				#		SOURCEPATH=$TEMPDIR
+				#	fi
+				# fi
 
-					# TODO: handle .zip source files?
-					# if [ -f $SOURCEPATH ]; then
-					#	if [ ?is-zip? $SOURCEPATH ]; then
-					# 		PLUGINZIP="true"
-					#		...extract zip to temp dir...
-					#		SOURCEPATH=$TEMPDIR
-					#	fi
-					# fi
+				if [ -d "$SOURCEPATH" ]; then
 
-					if [ -d "$SOURCEPATH" ]; then
+					# - reset do sync flag -
+					DOSYNC="false"
 
-						DOSYNC="false"
-
-						# - check slug match -
-						if [ "$FILES" == "all" ]; then
-							DOSYNC="true"; fi
-						if [ "$FILES" == "$SOURCESLUG" ]; then
-							DOSYNC="true"; fi
-						if [[ "$FILES" == *","* ]]; then
-							IFS="," read -r -a FILESLUGS <<< "$FILES"
-							for FILE in "${FILESLUGS[@]}"; do
-								if [ "$FILE" == "$SOURCESLUG" ]; then
-									DOSYNC="true"; 
-								fi
-							done
-						fi
-
-						if [ "$DOSYNC" == "true" ]; then
-
-							# - output syncing base relative files -
-							printf "Syncing Base Relative Files "; cyan $SOURCESLUG; printf " to site "; green $SITENAME; echo " "
-							
-							# - sync base relative files -
-							# TODO: maybe use rsync with --backup option?
-							# note: do not use --delete option!
-							sudo -u "$SITEUSER" rsync -av --delay-updates "$SOURCEPATH" "$SITEPATH"
-							
-							# - output extra info -
-							printf "Source Base File Path: "; cyan $SOURCEPATH; echo "";
-							printf "Synced to: "; green $SITEPATH; echo " "
-							
-							RESULT="success"
-						fi
-
-					else
-						# - output invalid source directory message -
-						red "Warning: "; printf "Invalid source directory, check "; white "sources.conf"; printf " for "; yellow $SOURCESLUG; printf ". Skipping..."; echo " "
+					# - check slug match -
+					if [ "$FILES" == "all" ]; then
+						DOSYNC="true"; fi
+					if [ "$FILES" == "$SOURCESLUG" ]; then
+						DOSYNC="true"; fi
+					if [[ "$FILES" == *","* ]]; then
+						IFS="," read -r -a FILESLUGS <<< "$FILES"
+						for FILE in "${FILESLUGS[@]}"; do
+							if [ "$FILE" == "$SOURCESLUG" ]; then
+								DOSYNC="true"; 
+							fi
+						done
 					fi
 
+					if [ "$DOSYNC" == "true" ]; then
+
+						# - output syncing drop-in (base relative) files -
+						printf "Syncing Drop-in Files "; cyan "$SOURCESLUG"; printf " to site "; green "$SITENAME"; echo " "
+
+						# - sync base relative files -
+						# TODO: maybe use rsync with --backup option ?
+						# note: do not use --delete option!
+						sudo -u "$SITEUSER" rsync -av --delay-updates "$SOURCEPATH" "$SITEPATH"
+
+						# - output extra info -
+						printf "Source Base File Path: "; cyan "$SOURCEPATH"; echo "";
+						printf "Synced to: "; green "$SITEPATH"; echo ""
+
+						RESULT="success"
+					fi
+
+				else
+					# - output invalid source directory message -
+					red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
 				fi
+
 			fi
-		done < $SOURCESCONF
-
-		if [ "$RESULT" != "success" ]; then
-			# - output no slug match message -
-			red "Error! "; printf "No matching base file slug found, check "; white "sources.conf"; printf " for "; yellow $FILES; echo "."
 		fi
+	done < "$CONFIG"
 
-	else
-		# - output no source config file found message -
-		red "Error!"; white "sources.conf"; printf " file is required to perform Plugin Sync."; echo " "
+	if [ "$RESULT" != "success" ]; then
+		# - output no slug match message -
+		red "Error!"; printf " No matching base file slug found, check "; white "wpx.conf"; printf " for "; yellow "$FILES"; echo "."
 	fi
 }
 
@@ -1588,58 +1673,71 @@ fi
 
 # [2] - target site slugs -
 if [ -z "$2" ]; then
-	red "Specify target site(s)"; echo "... (or use 'all')"; exit 1
+	red "Error!"; printf " Specify target site slug(s)... (or use "; yellow "all"; echo ")"; exit 1
 else 
 	if [[ "$2" == *","* ]]; then
-		# extract comma separated arguments for $2 to sitename slugs
+		# - extract comma separated arguments for $2 to sitename slugs -
 		# ref: https://stackoverflow.com/questions/10586153/split-string-into-an-array-in-bash
 		IFS="," read -r -a SITENAMES <<< "$2"
 	fi
 fi
 
 # [3] - plugin slugs for plugin actions -
-LISTACTIONS=("listplugins" "listplugin" "checkplugins" "checkplugin")
-if [ "$1" != "updateallplugins" ]; then
-	if [[ "$1" == *"plugin"* ]]; then
+if [[ "$1" == *"plugin"* ]]; then
+	if [ "$1" != "updateallplugins" ]; then
 		if [ -z "$3" ]; then
-			if [[ "${LISTACTIONS[@]}" =~ "$1" ]]; then
+			ARRAY=("listplugins" "listplugin" "checkplugins" "checkplugin")
+			checkarray "$1"
+			if [ "$INARRAY" == "1" ]; then
+				# - auto-set to list all for list actions -
 				SLUGS="all"
-			else 			
-				red "Error!"; printf " Specify plugin slug(s)"; echo "..."; exit 1
+			else 	
+				# - output specify plugin slugs message -
+				red "Error!"; printf " You must specify plugin slug(s)"; echo "..."; exit 1
 			fi
 		else
+			# - set to specified slugs -
 			SLUGS=$3
 		fi
 	fi
 fi
 
 # [4] - theme slugs for theme actions -
-LISTACTIONS=("listtheme" "listthemes" "checktheme" "checkthemes")
 if [[ "$1" == *"theme"* ]]; then
 	if [ -z "$3" ]; then
-		if [[ "${LISTACTIONS[@]}" =~ "$1" ]]; then
+		ARRAY=("listtheme" "listthemes" "checktheme" "checkthemes")
+		checkarray "$1"
+		if [ "$INARRAY" == "1" ]; then
+			# - auto-set to list all for list actions -
 			SLUGS="all"
 		else
-			red "Error!"; printf " Specify theme slug(s)"; echo "..."; exit 1
+			# - output specify theme slugs message -
+			red "Error!"; printf " You must specify theme slug(s)"; echo "..."; exit 1
 		fi	
 	else
+		# - set to specified slugs -
 		SLUGS=$3
 	fi
 fi
 
-# [5] - core slug (for core sync only) -
-if [ "$1" == "synccore" ]; then
-	SLUGS=$3
+# [5] - misc sync command slugs -
+# - synccore : core slug -
+# - syncmuplugin : muplugin slug -
+# - syncfile : file slug -
+if [[ "$1" == *"sync"* ]]; then
+	ARRAY=("synccore" "synccores" "syncmuplugin" "syncmuplugins" "syncfile" "syncfiles")
+	checkarray "$1"
+	if [ "$INARRAY" == "1" ]; then SLUGS=$3; fi
 fi
 
-# [6] - (optional) core version for core update -
-if [ "$1" == "updatecore" ]; then
-	SLUGS=$3
-fi
-
-# [7] - set slugs for file sync -
-if [ "$1" == "syncfile" ]; then
-	SLUGS=$3
+# [6] - arguments for core install / update -
+# - installcore : version / locale -
+# - updatecore : version -
+ARRAY=("installcore" "updatecore")
+checkarray "$1"
+if [ "$INARRAY" == "1" ]; then
+	if [ -n "$3" ]; then VERSION=$3; fi
+	if [ -n "$4" ]; then LOCALE=$4; fi
 fi
 
 
@@ -1647,60 +1745,53 @@ fi
 # LOOP SITES #
 # ========== #
 
-# - set current directory (to shell script path) -
+# - get current directory (to shell script path) -
 # ref: https://stackoverflow.com/questions/59895/getting-the-source-directory-of-a-bash-script-from-within
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# - check/set sites.conf path -
-if [ -f $DIR"/sites.conf" ]; then
-	SITESCONF=$DIR"/sites.conf"
-	echo $DIR"/sites.conf found"
+# - check and set wpx.conf path -
+if [ -f "$DIR""/wpx.conf" ]; then
+	CONFIG="$DIR""/wpx.conf"
 else
-	if [ -f "/root/.wp-cli/sites.conf" ]; then
-		SITESCONF="/root/.wp-cli/sites.conf"
+	if [ -f "/root/.wp-cli/wpx.conf" ]; then
+		CONFIG="/root/.wp-cli/wpx.conf"
 	fi
 fi
-if [ -n "$SITESCONF" ]; then
-	echo "Using sites file found at: $SITESCONF"
+if [ -n "$CONFIG" ]; then
+	# - output config file message -
+	printf "Using WPX configuration file found at: "; cyan "$CONFIG"; echo ""
+else 
+	# - output no config file message -
+	red "Error!"; printf " No "; yellow "wpx.conf"; printf " configuration file found!"; echo " Time to create one?"; exit 1
 fi
 
-# - check/set sources.conf path -
-if [ -f $DIR"/sources.conf" ]; then
-	SOURCESCONF=$DIR"/sources.conf"
-else
-	if [ -f "/root/.wp-cli/sources.conf" ]; then
-		SOURCESCONF="/root/.wp-cli/sources.conf"
-	fi
-fi
-if [ -n "$SOURCESCONF" ]; then
-	echo "Using sources file found at: $SOURCESCONF"
-fi
-
-# - read site list file without requiring it to end in a new line -
+# - loop sites in config file - 
+# (without requiring it to end in a new line)
 # ref: https://stackoverflow.com/a/31398490/5240159
-if [ -f "$SITESCONF" ]; then
+while IFS= read -a LINE || [ -n "$LINE" ]; do
 
-	# - loop site config data -
-	while IFS= read -a SITE || [ -n "$SITE" ]; do
+	# - ignore lines starting with # -
+	if [ ! "${LINE:0:1}" == "#" ]; then
 
-		# - ignore lines starting with # -
-		if [ ! "${SITE:0:1}" == "#" ]; then
+		# - expand config data -
+		DATA=($LINE)
+		TYPE=${DATA[0]}
 
-			# - expand site data -
-			DATA=( $SITE )
-			SITENAME=${DATA[0]}
-			SITEUSER=${DATA[1]}
+		# - only for site lines -
+		if [ "$TYPE" == "site" ]; then
+		
+			# - get site data config -
+			SITENAME=${DATA[1]}
+			SITEPATH=${DATA[2]}
+			SITEUSER=$(echo "${DATA[3]}" | tr -d '\r')
 			SITEGROUP=""
-			
+
 			# - maybe split off SITEUSER into SITEUSER:SITEGROUP -
 			if [[ "$SITEUSER" == *":"* ]]; then
 				IFS=":" read -r -a SITEINFO <<< "$SITEUSER"
-				SITEDATA=( $SITEINFO )
 				SITEUSER=${SITEINFO[0]}
 				SITEGROUP=${SITEINFO[1]}
 			fi
-
-			SITEPATH=$(echo ${DATA[2]} | tr -d '\r')
 
 			# - maybe set site locking flag -
 			if [ "${SITEPATH:0:1}" == "*" ]; then
@@ -1718,12 +1809,12 @@ if [ -f "$SITESCONF" ]; then
 				if [ "$2" == "all" ]; then
 					DO="true"; FOUND="true"
 				fi
-				if [ "$2" == $SITENAME ]; then
+				if [ "$2" == "$SITENAME" ]; then
 					DO="true"; FOUND="true"
 				fi
 				if [[ "$2" == *","* ]]; then
 					for SITE in "${SITENAMES[@]}"; do
-						if [ $SITE == $SITENAME ]; then
+						if [ "$SITE" == "$SITENAME" ]; then
 							DO="true"; FOUND="true"; 
 						fi
 					done
@@ -1732,153 +1823,198 @@ if [ -f "$SITESCONF" ]; then
 				# - check for matching command -
 				if [ $DO == "true" ]; then
 
-					## CORE COMMANDS ##
+					# ------------- #
+					# CORE COMMANDS #
+					# ------------- #
 
-					if [ $1 == "checkversion" ]; then
+					if [ "$1" == "checkversion" ]; then
 						checkversion; DONE="true"; fi
-					if [ $1 == "verifycore" ]; then
+					if [ "$1" == "checkversions" ]; then
+						checkversion; DONE="true"; fi
+					if [ "$1" == "verifycore" ]; then
 						verifycore; DONE="true"; fi
-					if [ $1 == "updatecore" ]; then
-						updatecore $SLUGS; DONE="true"; fi
-					if [ $1 == "reinstallcore" ]; then
+					if [ "$1" == "verifycores" ]; then
+						verifycore; DONE="true"; fi
+					if [ "$1" == "updatecore" ]; then
+						updatecore "$VERSION" "$LOCALE"; DONE="true"; fi
+					if [ "$1" == "updatecores" ]; then
+						updatecore "$VERSION"; DONE="true"; fi
+					if [ "$1" == "installcore" ]; then
+						installcore "$VERSION" "$LOCALE"; DONE="true"; fi
+					if [ "$1" == "installcores" ]; then
+						installcore "$VERSION" "$LOCALE"; DONE="true"; fi
+					if [ "$1" == "reinstallcore" ]; then
 						reinstallcore; DONE="true"; fi
-					if [ $1 == "lockcore" ]; then
+					if [ "$1" == "reinstallcores" ]; then
+						reinstallcore; DONE="true"; fi
+					if [ "$1" == "lockcore" ]; then
 						lockcore; DONE="true"; fi
-					if [ $1 == "unlockcore" ]; then
+					if [ "$1" == "lockcores" ]; then
+						lockcore; DONE="true"; fi
+					if [ "$1" == "unlockcore" ]; then
 						unlockcore; DONE="true"; fi
-					if [ $1 == "checklock" ]; then
+					if [ "$1" == "unlockcores" ]; then
+						unlockcore; DONE="true"; fi
+					if [ "$1" == "checklock" ]; then
 						checkcorelock; DONE="true"; fi
-					if [ $1 == "checkcorelock" ]; then
+					if [ "$1" == "checklocks" ]; then
 						checkcorelock; DONE="true"; fi
-					if [ $1 == "checkowners" ]; then
+					if [ "$1" == "checkcorelock" ]; then
+						checkcorelock; DONE="true"; fi
+					if [ "$1" == "checkcorelocks" ]; then
+						checkcorelock; DONE="true"; fi
+					if [ "$1" == "checkowner" ]; then
 						checkowners; DONE="true"; fi
-					if [ $1 == "checkpermissions" ]; then
+					if [ "$1" == "checkowners" ]; then
 						checkowners; DONE="true"; fi
-					if [ $1 == "checkperms" ]; then
+					if [ "$1" == "checkpermissions" ]; then
 						checkowners; DONE="true"; fi
-					if [ $1 == "fixowners" ]; then
+					if [ "$1" == "checkperms" ]; then
+						checkowners; DONE="true"; fi
+					if [ "$1" == "fixowner" ]; then
 						fixowners; DONE="true"; fi
-					if [ $1 == "fixpermissions" ]; then
+					if [ "$1" == "fixowners" ]; then
 						fixowners; DONE="true"; fi
-					if [ $1 == "fixperms" ]; then
+					if [ "$1" == "fixpermissions" ]; then
+						fixowners; DONE="true"; fi
+					if [ "$1" == "fixperms" ]; then
 						fixowners; DONE="true"; fi
 
-					## PLUGIN COMMANDS ##
+					# --------------- #
+					# PLUGIN COMMANDS #
+					# --------------- #
 
-					if [ $1 == "listplugins" ]; then
-						checkplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "listplugin" ]; then
-						checkplugin $SLUGS; DONE="true"; fi						
-					if [ $1 == "checkplugin" ]; then
-						checkplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "checkplugins" ]; then
-						checkplugins $SLUGS; DONE="true"; fi
-					if [ $1 == "installactivateplugin" ]; then
-						installactivateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "installactivateplugins" ]; then
-						installactivateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "installplugins" ]; then
-						installplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "installplugin" ]; then
-						installplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "reinstallplugins" ]; then
-						reinstallplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "reinstallplugin" ]; then
-						reinstallplugin $SLUGS; DONE="true"; fi				
-					if [ $1 == "uninstallplugin" ]; then
-						uninstallplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "uninstallplugins" ]; then
-						uninstallplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "activateplugin" ]; then
-						activateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "activateplugins" ]; then
-						activateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "deactivateplugin" ]; then
-						deactivateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "deactivateplugins" ]; then
-						deactivateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "deleteplugin" ]; then
-						deleteplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "deleteplugins" ]; then
-						deleteplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "updateplugin" ]; then
-						updateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "updateplugins" ]; then
-						updateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "updateallplugins" ]; then
+					if [ "$1" == "listplugins" ]; then
+						checkplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "listplugin" ]; then
+						checkplugin "$SLUGS"; DONE="true"; fi						
+					if [ "$1" == "checkplugin" ]; then
+						checkplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "checkplugins" ]; then
+						checkplugins "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "installactivateplugin" ]; then
+						installactivateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "installactivateplugins" ]; then
+						installactivateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "installplugins" ]; then
+						installplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "installplugin" ]; then
+						installplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "reinstallplugins" ]; then
+						reinstallplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "reinstallplugin" ]; then
+						reinstallplugin "$SLUGS"; DONE="true"; fi				
+					if [ "$1" == "uninstallplugin" ]; then
+						uninstallplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "uninstallplugins" ]; then
+						uninstallplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "activateplugin" ]; then
+						activateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "activateplugins" ]; then
+						activateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "deactivateplugin" ]; then
+						deactivateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "deactivateplugins" ]; then
+						deactivateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "deleteplugin" ]; then
+						deleteplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "deleteplugins" ]; then
+						deleteplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "updateplugin" ]; then
+						updateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "updateplugins" ]; then
+						updateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "updateallplugins" ]; then
 						updateallplugins; DONE="true"; fi
 
-					## THEME COMMANDS ## 
+					# -------------- #
+					# THEME COMMANDS # 
+					# -------------- #
 
-					if [ $1 == "listthemes" ]; then
-						listthemes; DONE="true"; fi
-					if [ $1 == "checktheme" ]; then
+					if [ "$1" == "listthemes" ]; then
+						listthemes "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "checktheme" ]; then
 						checktheme; DONE="true"; fi
-					if [ $1 == "checkthemes" ]; then
+					if [ "$1" == "checkthemes" ]; then
 						checktheme; DONE="true"; fi
-					if [ $1 == "activatetheme" ]; then
-						activatetheme $SLUGS; DONE="true"; fi
-					if [ $1 == "installtheme" ]; then
-						installtheme $SLUGS; DONE="true"; fi
-					if [ $1 == "installthemes" ]; then
-						installtheme $SLUGS; DONE="true"; fi
-					if [ $1 == "reinstalltheme" ]; then
-						reinstalltheme $SLUGS; DONE="true"; fi
-					if [ $1 == "reinstallthemes" ]; then
-						reinstalltheme $SLUGS; DONE="true"; fi
-					if [ $1 == "updatetheme" ]; then
-						updatetheme $SLUGS; DONE="true"; fi
-					if [ $1 == "updatethemes" ]; then
-						updatetheme $SLUGS; DONE="true"; fi
+					if [ "$1" == "activatetheme" ]; then
+						activatetheme "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "installtheme" ]; then
+						installtheme "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "installthemes" ]; then
+						installtheme "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "reinstalltheme" ]; then
+						reinstalltheme "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "reinstallthemes" ]; then
+						reinstalltheme "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "updatetheme" ]; then
+						updatetheme "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "updatethemes" ]; then
+						updatetheme "$SLUGS"; DONE="true"; fi
+	
+					# ------------- #
+					# SYNC COMMANDS #
+					# ------------- #
 
-					## SYNC COMMANDS ##
-
-					if [ $1 == "synccore" ]; then
-						synccore $SLUGS; DONE="true"; fi
-					if [ $1 == "syncplugin" ]; then
-						syncplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "syncplugins" ]; then
-						syncplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "syncactivateplugin" ]; then
-						syncactivateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "syncactivateplugins" ]; then
-						syncactivateplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "synctheme" ]; then
-						synctheme $SLUGS; DONE="true"; fi
-					if [ $1 == "syncthemes" ]; then
-						synctheme $SLUGS; DONE="true"; fi
-					if [ $1 == "syncactivatetheme" ]; then
-						syncactivatetheme $SLUGS; DONE="true"; fi
-					if [ $1 == "syncmuplugin" ]; then
-						syncmuplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "syncmuplugins" ]; then
-						syncmuplugin $SLUGS; DONE="true"; fi
-					if [ $1 == "syncfile" ]; then
-						syncfile $SLUGS; DONE="true"; fi
-					if [ $1 == "syncfiles" ]; then
-						syncfile $SLUGS; DONE="true"; fi
+					if [ "$1" == "synccore" ]; then
+						synccore "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "synccores" ]; then
+						synccores "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncplugin" ]; then
+						syncplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncplugins" ]; then
+						syncplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncactivateplugin" ]; then
+						syncactivateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncactivateplugins" ]; then
+						syncactivateplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "synctheme" ]; then
+						synctheme "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncthemes" ]; then
+						synctheme "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncactivatetheme" ]; then
+						syncactivatetheme "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncmuplugin" ]; then
+						syncmuplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncmuplugins" ]; then
+						syncmuplugin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncdropin" ]; then
+						syncdropin "$SLUGS"; DONE="true"; fi
+					if [ "$1" == "syncdropins" ]; then
+						syncdropin "$SLUGS"; DONE="true"; fi
 
 				fi
 
 			else
 				# - output invalid site path message -
-				red "Warning: Invalid path, check config for "; yellow $SITENAME; red ". Skipping"; echo "..."
+				red "Warning!"; printf "Invalid path, check config for "; yellow "$SITENAME"; printf ". Skipping"; echo "..."
 			fi
 		fi
-	done < $SITESCONF
-
-	if [ "$FOUND" == "false" ]; then
-		# - output no site slug match message -
-		red "Error! No site match found for "; yellow $2; red " in "; white "sites.conf"; echo " ..."
-	else 
-		if [ "$DONE" == "false" ]; then
-			# - output valid command message -
-			validcommands; exit 1		
-		fi
 	fi
+done < "$CONFIG"
 
-else
-	# - output no site config file message -
-1	red "Error! No sites.conf file found!"; echo " Time to create one?"
+if [ "$FOUND" == "false" ]; then
+	# - output no site slug match message -
+	red "Error!"; printf " No site match found for "; yellow "$2"; red " in "; white "wpx.conf"; echo "!"
+else 
+	if [ "$DONE" == "false" ]; then
+		# - output valid commands message -
+		red "Error!"; printf " Command action "; yellow "$1"; printf " not found."; echo ""
+		validcommands; exit 1
+	fi
 fi
 
+
+# =========
+# CHANGELOG
+# =========
+
+# = 1.0.1 =
+# - use array check function for actions instead of quick matching
+# - use single wpx.conf instead of sources.conf and sites.conf
+# - removed duplicate code for processing multiple/singular sources
+# - added code comments to all functions and sections
+# - added column formatting for plugin and theme list output
+
+# = 1.0.0 =
+# - added syncmuplugin and syncdropin commands
