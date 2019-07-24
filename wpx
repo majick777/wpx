@@ -24,18 +24,24 @@
 # Development TODOs
 # -----------------
 #
-# - selective theme listing (like plugin listing)
-# - add updatelist command (list all core/plugins/themes updates for site)
+# * check for sudo user capability before running wp
+# -- https://superuser.com/a/1281228/742095
+# -- maybe fallback to using --allowroot then chown ?
+# + add plugin verify-checksums command
+# + add updatelist command (list all core/plugins/themes updates for site)
+# - allow for filtered theme listing (like plugin listing)
+# - auto-config command to scan for WP installs
+# -- find /home/* -name "wp-config.php" -> wp core version
 #
-# * allow for use of @alias in combination with site slug
+# *** Feature: allow for SSH site path syncing
+# -> installcore (->reinstallcore)
+# -> all sync commands
+#
+# * Feature: allow for use of @alias in combination with site slug
 # -- ref: https://make.wordpress.org/cli/handbook/config/
 # ** lockcore, unlockcore
 # -> updatecore, installcore (->reinstallcore)
 # -> checkowners, fixowners
-#
-# * allow for SSH site path syncing
-# -> installcore (->reinstallcore)
-# -> all sync commands
 #
 # ? backup old plugin to restore on install/update failure ?
 # ? plugin and theme version parameters ?
@@ -673,7 +679,7 @@ function lockcore {
 	# - lock wp-admin recursively - 
 	if [ -d "$ADMIN" ]; then
 		sudo -u root chattr -R +i "$ADMIN"
-		// 1.0.3: attempt to preserve wp-admin error log writeability
+		# 1.0.3: attempt to preserve wp-admin error log writeability
 		if [ -f "$ADMIN""php_errors.log" ]; then
 			sudo -u root chattr -i "$ADMIN""php_errors.log"
 		fi
