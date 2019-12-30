@@ -1,14 +1,17 @@
 
 # WPX 
 
-## WP CLI Multiplied!
+![WPX Logo](https://wpmedic.tech/downloads/assets/wpx/icon-128x128.png)
 
-![WPX Logo](https://wpmedic.tech/downloads/assets/wpx/icon-256x256.png)
+## WP CLI Multiplied!
 
 > *You'll see your commands multiplied, if you continually decide,*
 > *to faithfully pursue, the policy of root.*
 
-### brought to you by WP Medic
+### Brought to you by WP Medic
+
+![WP Medic Logo](https://wpmedic.tech/downloads/assets/wpmedic-icon.png)
+
 Love this tool? [Become a WP Medic Patron](https://patreon.com/wpmedic)
 
 [WPX Home](http://wpmedic.tech/wpx/) - [WPX GitHub](https://github.com/majick777/wpx/)
