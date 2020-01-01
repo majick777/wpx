@@ -247,14 +247,14 @@ function getscriptversions {
 # ---------------- #
 # Colour Functions #
 # ---------------- #
-black() { printf "$(tput setaf 0)$*$(tput setaf 9)"; }
-red() { printf "$(tput setaf 1)$*$(tput setaf 9)"; }
-green() { printf "$(tput setaf 2)$*$(tput setaf 9)"; }
-yellow() { printf "$(tput setaf 3)$*$(tput setaf 9)"; }
-blue() { printf "$(tput setaf 4)$*$(tput setaf 9)"; }
-magenta() { printf "$(tput setaf 5)$*$(tput setaf 9)"; }
-cyan() { printf "$(tput setaf 6)$*$(tput setaf 9)"; }
-white() { printf "$(tput setaf 7)$*$(tput setaf 9)"; }
+black() { printf "$(tput setaf 0)$*$(tput sgr0)"; }
+red() { printf "$(tput setaf 1)$*$(tput sgr0)"; }
+green() { printf "$(tput setaf 2)$*$(tput sgr0)"; }
+yellow() { printf "$(tput setaf 3)$*$(tput sgr0)"; }
+blue() { printf "$(tput setaf 4)$*$(tput sgr0)"; }
+magenta() { printf "$(tput setaf 5)$*$(tput sgr0)"; }
+cyan() { printf "$(tput setaf 6)$*$(tput sgr0)"; }
+white() { printf "$(tput setaf 7)$*$(tput sgr0)"; }
 
 # ------------------- #
 # Check Action Result #
