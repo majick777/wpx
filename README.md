@@ -83,7 +83,9 @@ The next phase of development will focus on these two features (See the Roadmap 
   * (or you can just rename `wpx.sample.conf` to `wpx.conf` and edit then upload it)
 5. For the SYNC commands you need `rsync` installed (you probably already do):
   * [On Red Hat based systems]# yum install rsync 
-  * [On Debian based systems]# apt-get install rsync 
+  * [On Debian based systems]# apt-get install rsync
+6. For CentOS users, you may need to edit your `/etc/sudoers` file to include the following:
+`Defaults secure_path="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin/"`
 
 One line `WPX` install:
 
@@ -170,6 +172,12 @@ or to install plugin with slugs 'forcefield' and 'wp-simple-firewall' on site wi
 wpx installplugin my-site forcefield,wp-simple-firewall
 ```
 
+or to install and activate the plugin 'wp-simple-firewall' on all your sites:
+
+```
+wpx installactivateplugin all wp-simple-firewall
+```
+
 ###### Careful with Commas
 
 One of the main purposes and advantages of WPX is to be able to apply to multiple sites.
@@ -194,62 +202,66 @@ wpx installplugin my-site, my-other-site forcefield
 | `showsites`			| Table of matching SITE(S) from wpx.conf (default: all) |
 | `showsources`			| Table of matching SOURCES(S) from wpx.conf (default: all) |
 | `debuginfo`			| Run `wp --debug --info` on matching SITE(s) |
+| `updatelist`			| Checks and lists core/theme/plugin updates on matching SITE(s) |
 
 ##### [**CORE**]
 
-| `checkversion`		| Check installed WP Core version(s) on the SITE(S) specified |
-| `verifycore`			| Verify WP Core(s) Checksums on SITE(S) (requires no WP errors) |
-| `updatecore`			| Update to latest WP Core(s) on SITE(S) (version argument optional) |
-| `installcore`			| Install WP Core(s) to SITE(S) (version and locale optional) |
-| `reinstallcore`		| Reinstall WP Core(s) on SITE(S) (auto-matches version and locale) |
-| `lockcore`			| Add the immutable lock to WP Core(s) files on SITE(S) |
-| `unlockcore`			| Removes immutable lock from WP Core(s) files on SITE(S) |
-| `checklock`			| Checks immutable switch on all WP Core files on SITE(S) |
-| `checkowners`			| Checks all file owner/group match those in wpx.conf on SITE(S) |
-| `fixowners`			| Change all file owner/group to those in wpx.conf on SITE(S) |
+| `checkversion`		| Check installed WP Core version(s) on the SITE(s) specified |
+| `verifycore`			| Verify WP Core(s) Checksums on SITE(s) (requires no WP errors) |
+| `updatecore`			| Update to latest WP Core(s) on SITE(s) (version argument optional) |
+| `installcore`			| Install WP Core(s) to SITE(s) (version and locale optional) |
+| `reinstallcore`		| Reinstall WP Core(s) on SITE(s) (auto-matches version and locale) |
+| `lockcore`			| Add the immutable lock to WP Core(s) files on SITE(s) |
+| `unlockcore`			| Removes immutable lock from WP Core(s) files on SITE(s) |
+| `checklock`			| Checks immutable switch on all WP Core files on SITE(s) |
+| `checkowners`			| Checks all file owner/group match those in wpx.conf on SITE(s) |
+| `fixowners`			| Change all file owner/group to those in wpx.conf on SITE(s) |
 
 ##### [**PLUGIN**]
 
-| `listplugins`			| Check plugin(s) SLUG(S) for SITE(S) - status, version, updates |
-| `activateplugin`		| Activate plugin(s) SLUG(S) for SITE(S) |
-| `deactivateplugin`		| Deactivate plugin(s) SLUG(S) for SITE(S) |
-| `installplugin`		| Install plugin(s) SLUG(S) for SITE(S) |
-| `installactivateplugin`	| Install and Activate plugin(s) SLUG(S) for SITE(S) |
-| `reinstallplugin`     	| Reinstall plugin(s) SLUG(S) for SITE(S |)
-| `updateplugin`		| Update plugin(s) SLUG(S) for SITE(S) |
-| `updateallplugins`		| Update ALL plugins for SITE(S) |
-| `rollbackplugin`		| Rollback plugin for SITE(S) (specify plugin-slug:version) |
-| `deleteplugin`		| Deletes plugin(s) SLUG(S) for SITE(S) |
-| `uninstallplugin`     	| Uninstall (deactivate/delete) plugins(s) SLUG(S) for SITES(S) |
+| `listplugins`			| Check plugin(s) SLUG(s) for SITE(s) - status, version, updates |
+| `verifyplugin`		| Verify checksums for plugin(s) SLUG(s) for SITE(s)
+| `activateplugin`		| Activate plugin(s) SLUG(s) for SITE(s) |
+| `deactivateplugin`		| Deactivate plugin(s) SLUG(s) for SITE(s) |
+| `installplugin`		| Install plugin(s) SLUG(s) for SITE(s) |
+| `installactivateplugin`	| Install and Activate plugin(s) SLUG(s) for SITE(s) |
+| `reinstallplugin`     	| Reinstall plugin(s) SLUG(s) for SITE(s) |
+| `updateplugin`		| Update plugin(s) SLUG(s) for SITE(s) |
+| `updateallplugins`		| Update ALL plugins for SITE(s) |
+| `rollbackplugin`		| Rollback plugin for SITE(s) (specify plugin-slug:version) |
+| `deleteplugin`		| Deletes plugin(s) SLUG(s) for SITE(s) |
+| `uninstallplugin`     	| Uninstall (deactivate/delete) plugins(s) SLUG(s) for SITES(s) |
 
 ##### [**THEME**]
 
-| `listthemes`			| List installed themes on SITE(S) |
-| `checktheme`			| Check active child and parent themes on SITE(S) |
-| `activatetheme`		| Activate theme SLUG for SITE(S) |
-| `installtheme`		| Install theme SLUG(S) for SITE(S) |
-| `installactivatetheme`	| Install and Activate theme SLUG for SITE(S) |
-| `reinstalltheme`		| Reinstall theme SLUG(S) for SITE(S) |
-| `updatetheme`			| Update theme SLUG(S) for SITE(S) |
-| `rollbacktheme`		| Rollback theme SLUG:VERSION for SITE(S) |
+| `listthemes`			| List installed themes on SITE(s) |
+| `checktheme`			| Check active child and parent themes on SITE(s) |
+| `activatetheme`		| Activate theme SLUG for SITE(s) |
+| `installtheme`		| Install theme SLUG(s) for SITE(s) |
+| `installactivatetheme`	| Install and Activate theme SLUG for SITE(s) |
+| `reinstalltheme`		| Reinstall theme SLUG(s) for SITE(s) |
+| `updatetheme`			| Update theme SLUG(s) for SITE(s) |
+| `rollbacktheme`		| Rollback theme theme-slug:version for SITE(s) |
 
 
 ##### [**SYNC**]
 
-| `synccore`			| Sync core SLUG for SITE(S) using wpx.conf |
-| `syncplugin`			| Sync plugin SLUG(S) for SITE(S) using wpx.conf |
-| `syncactivateplugin`		| Sync and activate plugin SLUG(S) for SITE(S) using wpx.conf |
-| `synctheme`			| Sync theme SLUG for SITE(S) using wpx.conf |
-| `syncactivatetheme`		| Sync and activate theme SLUG for SITE(S) wpx.conf |
-| `syncmuplugin`		| Sync must-use plugin SLUG(S) for SITE(S) wpx.conf |
-| `syncdropin`			| Sync dropin (relative files) SLUG(S) for SITE(S) using wpx.conf |
+| `synccore`			| Sync core SLUG for SITE(s) using wpx.conf |
+| `syncplugin`			| Sync plugin SLUG(s) for SITE(s) using wpx.conf |
+| `syncactivateplugin`		| Sync and activate plugin SLUG(s) for SITE(s) using wpx.conf |
+| `synctheme`			| Sync theme SLUG for SITE(s) using wpx.conf |
+| `syncactivatetheme`		| Sync and activate theme SLUG for SITE(s) wpx.conf |
+| `syncmuplugin`		| Sync must-use plugin SLUG(s) for SITE(s) wpx.conf |
+| `deletemuplugin`		| Delete matching must-use plugin SLUG(s) files for SITE(s) using wpx.conf |
+| `syncdropin`			| Sync dropin (relative files) SLUG(s) for SITE(s) using wpx.conf |
+| `deletedropin`		| Delete matching dropin SLUG(s) files for SITE(s) using wpx.conf |
 
 ##### [**LANGUAGE**]
 
-| `installlanguage`		| Install language locale SLUG(S) on SITE(S) |
-| `activatelanguage`		| Activate language locale SLUG on SITE(S) |
-| `updatelanguage`		| Update language locale SLUG(S) on SITE(S) |
-| `uninstalllanguage`		| Uninstall language locale SLUG(S) on SITE(S) |
+| `installlanguage`		| Install language locale SLUG(s) on SITE(s) |
+| `activatelanguage`		| Activate language locale SLUG on SITE(s) |
+| `updatelanguage`		| Update language locale SLUG(s) on SITE(s) |
+| `uninstalllanguage`		| Uninstall language locale SLUG(s) on SITE(s) |
 
 
 ##### Additional Arguments
@@ -258,9 +270,10 @@ The `updatecore`, `updateplugin` and `updatetheme` commands can take an addition
 a specific version (must be an exact version), minor, patch, or major (default.)
 
 The `listplugins` command will take plugin slugs and/or additional filters if specified *in the comma-separated plugin list*:
-`plugin-slug, `all` (default when no list specified), `updates`, `actives`, `inactives`, `mustuses`, `dropins`
-(A similar ability will be added in future for `listthemes`)
+`plugin-slug`, `all` (default when nothing specified), `updates`, `actives`, `inactives`, `mustuses`, `dropins`
 
+The `listthemes` command will take theme slugs and/or additional filters if specified *in the comma-separated theme list*:
+`theme-slug`, `all` (default when nothing specified), `updates`, `actives`, `inactives`, `parents`, `childs`
 
 ###### Command Name Variations Okay!
 
@@ -268,13 +281,13 @@ The `listplugins` command will take plugin slugs and/or additional filters if sp
 **Plural Commands** Also For ease of use when typing on the command line (to prevent retyping), 
 *most* singular plugin and theme action commands will also work in *plural* form, ie:
 
-[**CORE**] `checkversions`, `verifycores`, `installcores`, `reinstallcores`, `updatecores`, `lockcores`, `unlockcores`, `checklocks`
+[**CORE**] `checkversions`, `verifycores`, `installcores`, `reinstallcores`, `updatecores`, `lockcores`, `unlockcores`, `checklocks`, `updatelists`
 
-[**PLUGIN**] `checkplugins`, `activateplugins`, `deactivateplugins`, `installplugins`, `installactivateplugins`, `reinstallplugins`, `updateplugins`
+[**PLUGIN**] `checkplugins`, `verifyplugins`, `activateplugins`, `deactivateplugins`, `installplugins`, `installactivateplugins`, `reinstallplugins`, `updateplugins`
 
 [**THEME**] `checkthemes`, `installthemes`, `reinstallthemes`, `updatethemes` (but *NOT* `activatethemes` or `installactivatethemes`)
 
-[**SYNC**] `synccores`, `syncplugins`, `syncactivateplugins`, `syncthemes`, `syncmuplugins`, `syncdropins` (but *NOT* `syncactivatethemes`)
+[**SYNC**] `synccores`, `syncplugins`, `syncactivateplugins`, `syncthemes`, `syncmuplugins`, `deletemuplugins, `syncdropins`, `deletedropins` (but *NOT* `syncactivatethemes`)
 
 [**LANGUAGE**] `installlanguages`, `updatelanguages`, `uninstalllanguages` (but *NOT* `activatelanguage`)
 
@@ -383,6 +396,19 @@ Enjoy!
 
 
 ### Changelog
+
+#### = 1.0.5 =
+* added deletemuplugin command for removing synced mu-plugins
+* added deletedropin command for removing synced dropins
+* added verifyplugin command to check plugin and source plugin checksums
+* added updatelist command for checking core/theme/plugin updates
+* added theme list filtering capability
+* added locale detection for verify core checksums command
+* added --no-color switch to wp command for output success matching
+* fix incorrect nesting on invalid source messages
+* fix to set permissions for exact files for muplugins/dropins
+* fix to add extra space suffix to YML ENV prefix
+* fix to incorrect syncdropin command syntax
 
 #### = 1.0.4 = 
 

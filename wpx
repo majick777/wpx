@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # - set WPX version -
-WPXV="1.0.4"
+WPXV="1.0.5"
 
 # ================================ #
 # === WPX - WP CLI Multiplied! === #
@@ -45,6 +45,7 @@ WPXV="1.0.4"
 # - Check File Owners/Groups
 # - Fix File Owners/Groups
 # - Get Option Value
+# - Update List
 # === Plugin Commands ===
 # - List Plugins
 # - Install Plugin
@@ -73,7 +74,9 @@ WPXV="1.0.4"
 # - Sync Theme
 # - Sync and Activate Theme
 # - Sync Must Use Plugin
+# - Delete Must Use Plugin
 # - Sync Dropin
+# - Delete Dropin
 # === Language Commands ===
 # - Install Language
 # - Uninstall Language
@@ -116,11 +119,11 @@ SCRIPTDIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 # ------------------------- #
 function validcommands {
 	red "Valid Commands"; echo ":"
-	printf "["; yellow "WPX"; echo "] updatecheck, updatescript, showconfig, showsites, showsources, debuginfo"
+	printf "["; yellow "WPX"; echo "] updatecheck, updatescript, showconfig, showsites, showsources, debuginfo, updatelist"
 	printf "["; yellow "CORE"; echo "] debuginfo, checkversion, verifycore, installcore, reinstallcore, updatecore, lockcore, unlockcore, checklock, checkowners, fixowners"
-	printf "["; yellow "PLUGIN"; echo "] listplugins, activateplugin, deactivateplugin, installplugin, installactivateplugin, reinstallplugin, updateplugin, updateallplugins, rollbackplugin, deleteplugin"
-	printf "["; yellow "THEME"; echo "] listthemes, activatetheme, installtheme, installactivatetheme, reinstalltheme, updatetheme, rollbackplugin, deletetheme"
-	printf "["; yellow "SYNC"; echo "] syncplugin, syncactivateplugin, syncmuplugin, synctheme, syncactivatetheme, syncmuplugin, syncdropin"
+	printf "["; yellow "PLUGIN"; echo "] listplugins, verifyplugin, activateplugin, deactivateplugin, installplugin, installactivateplugin, reinstallplugin, updateplugin, updateallplugins, rollbackplugin, deleteplugin"
+	printf "["; yellow "THEME"; echo "] listthemes, activatetheme, installtheme, installactivatetheme, reinstalltheme, updatetheme, rollbacktheme, deletetheme"
+	printf "["; yellow "SYNC"; echo "] syncplugin, syncactivateplugin, syncmuplugin, synctheme, syncactivatetheme, syncmuplugin, deletemuplugin, syncdropin, deletedropin"
 	printf "["; yellow "LANGUAGE"; echo "] installlanguage, activatelanguage, updatelanguage, uninstalllanguage"
 }
 
@@ -267,9 +270,10 @@ function checkresult {
 	# - set already done check strings -
 	# TODO: maybe set more "already done" strings ?
 	ALREADY=""
-	if [ "$TYPE" == 'install' ]; then ALREADY="already installed"; fi
-	if [ "$TYPE" == 'activate' ]; then ALREADY="already activated"; fi
-	if [ "$TYPE" == 'delete' ]; then ALREADY="already deleted"; fi
+	if [ "$TYPE" == "install" ]; then ALREADY="already installed"; fi
+	if [ "$TYPE" == "activate" ]; then ALREADY="already activated"; fi
+	if [ "$TYPE" == "activate" ]; then ALREADY="already deactivated"; fi
+	if [ "$TYPE" == "delete" ]; then ALREADY="already deleted"; fi
 	
 	# if [[ "$OUTPUT" == *"Error"* ]]; then
 	
@@ -386,7 +390,7 @@ function checksource {
 	#	if [[ "$GITVER" == *"Git version"* ]]; then
 	#		rm -rf "$INSTALLTEMP"
 	#		mkdir "$INSTALLTEMP"
-	#		cd "$PLUGINTEMP"
+	#		cd "$INSTALLTEMP"
 	#		git clone "$SOURCEPATH"
 	#		SOURCEPATH="$INSTALLTEMP"
 	#		GIT="true"
@@ -398,10 +402,14 @@ function checksource {
 
 	# - handle .zip source files -
 	if [ "${SOURCEPATH:(-4):4}" == ".zip" ] || [ "${SOURCEPATH:(-4):4}" == ".ZIP" ]; then
+
+		# - make temporary directory -
 		rm -rf "$INSTALLTEMP"
 		mkdir "$INSTALLTEMP"
 		cd "$INSTALLTEMP"
+
 		if [ "${SOURCEPATH:0:4}" == "http" ] || [ "${SOURCEPATH:0:4}" == "HTTP" ]; then
+			# - handle http source zip -
 			yellow "***"; printf "Downloading source from URL for "; cyan "$SOURCESLUG"; echo "..."
 			wget "$SOURCEPATH"
 			FILENAME=$(basename "$SOURCEPATH")
@@ -415,6 +423,7 @@ function checksource {
 			fi
 
 		elif [ -f "$SOURCEPATH" ]; then
+			# - handle local file source zip -
 			unzip -d "$INSTALLTEMP" "$SOURCEPATH"
 			ZIP="true"
 			SOURCEPATH="$INSTALLTEMP""/""$SOURCESLUG""/"
@@ -647,9 +656,15 @@ function checkversion {
 		red "Error."; echo " Could not detect WordPress version."
 
 	fi
+}
+
+# ------------------ #
+# Check Core Updates #
+# ------------------ #
+function checkcore {
 
 	# - check for core updates -
-	echo "Checking for core updates..."
+	yellow "*"; printf " Checking for core updates on "; green "$SITENAME"; echo "..."
 	COMMAND="$WP"" core check-update --format=csv"
 	OUTPUT=$($COMMAND)
 
@@ -660,12 +675,12 @@ function checkversion {
 				if [[ "$LINE" == *","* ]]; then
 					VERSION=$(awk -F',' '{print $1}' <<< "$LINE")
 					TYPE=$(awk -F',' '{print $2}' <<< "$LINE")
-					white "Update to "; yellow "$VERSION"; white " ("; yellow "$TYPE"; white ") available."; echo ""
+					white "Update to WordPress "; yellow "$VERSION"; white " ("; yellow "$TYPE"; white ") available."; echo ""
 				fi
 			fi
 		done <<< "$OUTPUT"
 	else
-		echo "No updates available, core is up to date."
+		echo "No updates available, WordPress core is up to date."
 	fi
 
 }
@@ -688,11 +703,18 @@ function verifycore {
 	VERSION=$(grep 'WordPress version:' <<< "$VERSION")
 	VERSION=$(cut -d ' ' -f3 <<< "$VERSION")
 
+	# - get active language locale -
+	# 1.0.5: added locale detection for verify checksums
+	COMMAND="$WP"" language core list --status=active"
+	LOCALE=$($COMMAND)
+	LOCALE=$(grep 'active' <<< "$LOCALE")
+	LOCALE=$(cut -f1 <<< "$LOCALE")
+
 	# - output verify checksum message -
 	yellow "***"; printf " Verifying core checksums for "; green "$SITENAME"; printf " (WP "; yellow "$VERSION"; echo ")"
 	
 	# - set command and execute -
-	COMMAND="$WP"" core verify-checksums --version=""$VERSION"" --skip-plugins"
+	COMMAND="$WP"" core verify-checksums --version=""$VERSION"" --locale=""$LOCALE"" --skip-plugins"
 	OUTPUT=$($COMMAND)
 	
 	# - check result and maybe try again -
@@ -719,13 +741,13 @@ function updatecore {
 	if [ -n "$VERSION" ]; then
 		if [ "$VERSION" == "major" ]; then
 			# - update to latest version -
-			yellow "***"; printf " Updating core on "; green "$SITENAME"; printf " ("; yellow "$VERSION"; echo ")..."
-			COMMAND="$WP"" core update --skip-plugins --version""$VERSION"
+			# yellow "***"; printf " Updating core on "; green "$SITENAME"; printf " ("; yellow "$VERSION"; echo ")..."
+			COMMAND="$WP"" core update --skip-plugins --version=""$VERSION"
 		elif [ "$VERSION" == "minor" ] || [ "$VERSION" == "patch" ]; then
 				# - update to minor version
 				if [ "$VERSION" == "patch" ]; then VERSION="minor"; fi
 				yellow "***"; printf " Updating core on "; green "$SITENAME"; printf " ("; yellow "$VERSION"; echo " only)..."
-				COMMAND="$WP"" core update --skip-plugins --version""$VERSION"
+				COMMAND="$WP"" core update --skip-plugins --version=""$VERSION"
 		else
 			# - force update to specific version -
 			yellow "***"; printf " Updating core on "; green "$SITENAME"; printf " to Version "; yellow "$VERSION"; echo "..."
@@ -815,8 +837,8 @@ function installcore {
 	# - execute command -
 	OUTPUT=$($COMMAND)
 	
-	# TODO: define SUCCESS (for reattempt) ?
-	# SUCCESS=""
+	# - check result success -
+	SUCCESS="Success: WordPress downloaded."
 	checkresult "$OUTPUT" "$SUCCESS"
 	
 	# - maybe retry core download -
@@ -1178,6 +1200,49 @@ function getoption {
 	fi
 }
 
+# ------------ #
+# Search Files #
+# ------------ #
+# function searchfiles {
+
+	# - output searching for string message -
+	# yellow "*"; printf " Searching files for string '"; printf "$STRING"; printf "'"; on "; green "$SITENAME"; echo ": "
+
+	# COMMAND="fgrep -R '""$STRING""' ""$SITEPATH"
+	# echo "$COMMAND"
+	# fgrep -R '"$STRING"' "$SITEPATH"
+	# OUTPUT=$($COMMAND)
+	# echo "$OUTPUT"
+# }
+
+# --------------- #
+# Search Database #
+# --------------- #
+# function searchdatabase {
+# 	COMMAND="$WP"" --dry-run search-replace '""$STRING""' ''"
+# 	OUTPUT=$($COMMAND)
+#	echo "$OUTPUT"
+# }
+
+# ----------- #
+# Update List #
+# ----------- #
+function updatelist {
+
+	# - update list message -
+	yellow "**"; printf " Listing all updates for "; green "$SITENAME"; echo ""
+
+	# - check core updates -
+	checkcore
+
+	# - check theme updates -
+	listthemes "updates"
+
+	# - check plugin updates -
+	listplugins "updates"	
+}
+
+
 # ----------------------- #
 # === PLUGIN COMMANDS === #
 # ----------------------- #
@@ -1191,7 +1256,7 @@ function listplugins {
 	local PLUGIN; PLUGIN=$1
 
 	# - output checking plugins message -
-	yellow "*"; printf " Checking for plugin(s) on "; green "$SITENAME"; echo ": "
+	yellow "*"; printf " Listing plugin(s) on "; green "$SITENAME"; echo "..."
 	
 	# - get plugin list -
 	# 1.0.4: split commands to avoid 'Too many positional arguments' error
@@ -1208,7 +1273,8 @@ function listplugins {
 
 	# - empty = list all plugins -
 	if [ -z "$PLUGIN" ]; then
-		PLUGINS=("${ALLPLUGINS[@]}")		 
+		PLUGINS=("${ALLPLUGINS[@]}")
+		ALL="true"
 	else
 		# - read specified plugins -
 		IFS="," read -r -a PLUGINS <<< "$PLUGIN"
@@ -1350,21 +1416,108 @@ function listplugins {
 	fi
 }
 
+# ------------- # 
+# Verify Plugin #
+# ------------- #
+# 1.0.5: added command for verifying plugin checksums
+function verifyplugin {
+
+	local PLUGIN; PLUGIN=$1
+	
+	# - loop specified plugins -
+	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
+	for PLUGIN in "${PLUGINS[@]}"; do
+
+		# - check against plugin sources -
+		# 1.0.5: added checksum for plugin sync sources
+		MATCHED=""
+		while IFS= read -r -a SOURCE || [ -n "$SOURCE" ]; do
+
+			# - ignore lines starting with # -
+			if [ ! "${SOURCE:0:1}" == "#" ]; then
+
+				# - expand source data -
+				IFS=" " read -r -a DATA <<< "$SOURCE"
+				SOURCETYPE=${DATA[0]}
+				SOURCESLUG=${DATA[1]}
+				SOURCEPATH=$(echo "${DATA[2]}" | tr -d '\r')
+
+				if [ "$SOURCETYPE" == "plugin" ]; then
+
+					# - check slug match -
+					if [ "$PLUGIN" == "$SOURCESLUG" ]; then
+						
+						MATCHED="true"
+
+						# - output verifying plugin message -
+						yellow "***"; printf " Verifying plugin source "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
+
+						# - handle .zip source files -
+						checksource
+
+						# - maybe split source reference to get actual plugin slug -
+						ACTUALSLUG="$SOURCESLUG"
+						if [[ "$SOURCESLUG" == *":"* ]]; then
+							IFS=":" read -r -a SLUGINFO <<< "$SOURCESLUG"
+							SOURCESLUG=${SLUGINFO[0]}
+							ACTUALSLUG=${SLUGINFO[1]}
+						fi
+						PLUGINPATH="$SITEPATH""wp-content/plugins/""$ACTUALSLUG""/"
+
+						# - use rsync to verify file checksums -
+						COMMAND="$SUDO""rsync -n -aic --out-format=%n ""$SOURCEPATH"" ""$PLUGINPATH"
+
+						# - maybe cleanup git / zip dir -
+						if [ "$GIT" == "true" ] || [ "$ZIP" == "true" ]; then
+							rm -rf "$INSTALLTEMP"
+						fi
+						
+						# - loop matching files -						
+						FILECOUNT=0; FILELIST=$($COMMAND)
+						readarray -t FILES <<< "$FILELIST"
+						for FILEPATH in "${FILES[@]}"; do
+							if [ -n "$FILEPATH" ] && [ ! "${FILEPATH:0:2}" == "./" ]; then
+								echo "$FILEPATH"
+								((++FILECOUNT))
+							fi
+						done
+						if [ "$FILECOUNT" -gt 0 ]; then
+							yellow "$FILECOUNT"; echo " plugin files were found with different checksums.";
+						else
+							printf "All "; cyan "$PLUGIN"; printf " file checksums match on site "; green "$SITENAME"; echo "."
+						fi
+					fi
+				fi
+			fi
+		done
+
+		# - use wp CLI as not in source list - 
+		if [ ! "$MATCHED" == "true" ]; then
+
+			# - output verifying plugin message -
+			yellow "***"; printf " Verifying plugin "; cyan "$PLUGIN"; printf " on "; green "$SITENAME"; echo "..."
+
+			# - verify checksums for plugin -
+			COMMAND="$WP"" plugin verify-checksums ""$PLUGIN"" --skip-plugins"
+			OUTPUT=$($COMMAND)
+			echo "$OUTPUT"
+		fi
+		
+	done
+}
+
 # -------------- #
 # Install Plugin #
 # -------------- #
 function installplugin {
 
 	local PLUGIN; PLUGIN=$1
-	SUCCESS="Plugin installed successfully."
+	SUCCESS="Success: Installed"
 	
 	# - loop plugins -
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
 	for PLUGIN in "${PLUGINS[@]}"; do
 	
-		# - output installing plugin message -
-		
-
 		# - maybe split plugin by plugin-slug:version -
 		# 1.0.4: allow for specific version installs
 		VERSION=""
@@ -1384,7 +1537,7 @@ function installplugin {
 		OUTPUT=$($COMMAND)
 		
 		# - check result and maybe try again
-		checkresult "$OUTPUT" "$SUCCESS"
+		checkresult "$OUTPUT" "$SUCCESS" install
 		if [ "$RESULT" == "failed" ]; then OUTPUT=$($COMMAND); fi
 
 		echo "$OUTPUT"
@@ -1502,7 +1655,7 @@ function reinstallplugin {
 function activateplugin {
 	
 	local PLUGIN; PLUGIN=$1
-	SUCCESS="Success: Plugin"
+	SUCCESS="Success: Activated"
 	
 	# TODO: allow for plugin activation on Multisite via Blog ID
 	COMMAND="$WP"" core is-installed --network"
@@ -1523,7 +1676,7 @@ function activateplugin {
 		OUTPUT=$($COMMAND)
 		
 		# - check result and maybe try again -
-		checkresult "$OUTPUT" "$SUCCESS"
+		checkresult "$OUTPUT" "$SUCCESS" activate
 		if [ "$RESULT" == "failed" ]; then OUTPUT=$($COMMAND); fi
 		
 		echo "$OUTPUT"
@@ -1557,7 +1710,7 @@ function deactivateplugin {
 		OUTPUT=$($COMMAND)
 		
 		# - check result and maybe try again -
-		checkresult "$OUTPUT" "$SUCCESS"
+		checkresult "$OUTPUT" "$SUCCESS" deactivate
 		if [ "$RESULT" == "failed" ]; then OUTPUT=$($COMMAND); fi
 		
 		echo "$OUTPUT"
@@ -1570,7 +1723,7 @@ function deactivateplugin {
 function updateplugin {
 	
 	local PLUGIN; PLUGIN="$1"
-	SUCCESS="Plugin updated successfully."
+	SUCCESS="Success: Updated"
 	
 	# IDEA: get plugin list before updates and compare with after
 	
@@ -1652,7 +1805,7 @@ function updateplugin {
 function rollbackplugin {
 
 	local PLUGIN; PLUGIN=$1
-	SUCCESS="Plugin installed successfully."
+	SUCCESS="Success: Installed"
 	
 	# - loop plugins -
 	IFS="," read -r -a PLUGINS <<< "$PLUGIN"
@@ -1710,14 +1863,13 @@ function deleteplugin {
 	
 		# - check result and maybe force delete plugin -
 		checkresult "$OUTPUT" "$SUCCESS" delete
-		if [ "$RESULT" == "success" ]; then
-			echo "$OUTPUT"
-		else
+		if [ "$RESULT" == "failed" ]; then
 			PLUGINPATH="$SITEPATH"wp-content/plugins/"$PLUGIN"
 			if [ -n "$YMLPATH" ] || [ -n "$ALIAS" ] || [ -n "$SSH" ]; then
 				red "Failed"; printf ": Could not delete plugin "; cyan "$PLUGIN"; echo "."
 			elif [ -d "$PLUGINPATH" ]; then
-				"$SUDO"rm -rf "$PLUGINPATH"
+				COMMAND="$SUDO"rm -rf "$PLUGINPATH"
+				OUTPUT=$($COMMAND)
 				if [ -d "$PLUGINPATH" ]; then
 					red "Failed"; printf ": Could not delete plugin "; cyan "$PLUGIN"; printf " on site "; green "$SITENAME"; echo "."
 					RESULT="failed"
@@ -1725,6 +1877,8 @@ function deleteplugin {
 					RESULT="success"; yellow "Manually Deleted plugin"; cyan "$PLUGIN"; printf " on site "; green "$SITENAME"; echo "."
 				fi
 			fi
+		else
+			echo "$OUTPUT"
 		fi
 	done
 }
@@ -1781,7 +1935,7 @@ function listthemes {
 	fi
 
 	# - output listing themes message -
-	yellow "*"; printf " Listing theme(s) for "; green "$SITENAME"; echo "..."
+	yellow "*"; printf " Listing theme(s) on "; green "$SITENAME"; echo "..."
 
 	# - get all theme info -	
 	# 1.0.4: split command to avoid 'Too many positional arguments' error
@@ -1789,15 +1943,42 @@ function listthemes {
 	INFO=$($COMMAND)
 	INFO=$(tail -n +2 <<< "$INFO")
 
-	# - check for empty / 'all' -
-	if [ -z "$THEME" ]; then THEME="all"; fi
-	if [ "$THEME" == "all" ]; then
-		THEMES=()
-		while IFS= read -r -a LINE; do
-			THEMES+=($(awk -F',' '{print $1}' <<< "$LINE"))
-		done <<< "$INFO"
-	else 
+	# - get all listed themes -
+	# 1.0.5: allow for theme filters
+	I=0; ALLTHEMES=(); LINES=()
+	while IFS= read -r -a LINE; do
+		ALLTHEMES[$I]=$(awk -F',' '{print $1}' <<< "$LINE"); 
+		LINES[$I]=$LINE; ((++I))
+	done <<< "$INFO"
+
+	# - empty = list all themes -
+	if [ -z "$THEME" ]; then
+		THEMES=("${ALLTHEMES[@]}")
+		ALL="true"
+	else
+		# - read specified themes -
 		IFS="," read -r -a THEMES <<< "$THEME"
+
+		# - check for limit switches -
+		I=0; NEWTHEMES=()
+		ALL=""; ACTIVES=""; INACTIVES=""; PARENTS=""; CHILDS=""; UPDATES=""; CHANGED=""
+		for ATHEME in "${THEMES[@]}"; do
+			REMOVE=""
+			if [ "$ATHEME" == "all" ]; then ALL="true"; fi
+			if [ "$ATHEME" == "actives" ]; then ACTIVES="true"; REMOVE="true"; CHANGED="true"; fi
+			if [ "$ATHEME" == "inactives" ]; then INACTIVES="true"; REMOVE="true"; CHANGED="true"; fi
+			if [ "$ATHEME" == "parents" ]; then PARENTS="true"; REMOVE="true"; CHANGED="true"; fi
+			if [ "$ATHEME" == "childs" ]; then CHILDS="true"; REMOVE="true"; CHANGED="true"; fi
+			if [ "$ATHEME" == "updates" ]; then UPDATES="true"; REMOVE="true"; CHANGED="true"; fi
+			if [ ! "$REMOVE" == "true" ]; then NEWTHEMES[$I]=$ATHEME; ((++I)); fi
+		done
+
+		# - reassign plugin list if changed -
+		if [ "$ALL" == "true" ]; then
+			THEMES=("${ALLTHEMES[@]}");
+		elif [ "$CHANGED" == "true" ]; then 
+			THEMES=("${NEWTHEMES[@]}");
+		fi
 	fi
 
 	# - table headings -
@@ -1808,12 +1989,15 @@ function listthemes {
 	TABLE+=$(white "UPDATES"); TABLE+=$'\r\n'
 
 	# - loop themes -
-	for THEME in "${THEMES[@]}"; do
+	I=0; MATCHED=""
+	for ATHEME in "${ALLTHEMES[@]}"; do
 	
-		ROW=$(cyan "$THEME")
-		ACTIVE=""
+		ROW=$(cyan "$ATHEME")
+		ACTIVE=""; INACTIVE=""; CHILD=""; PARENT=""
 
-		THEMEINFO=$(grep "$THEME" <<< "$INFO")
+		# THEMEINFO=$(grep "$THEME" <<< "$INFO")
+		THEMEINFO=${LINES[$I]}
+		
 		if [ -n "$THEMEINFO" ]; then
 
 			# - split CSV columns -
@@ -1827,16 +2011,18 @@ function listthemes {
 					ROW+=$(green "Active")
 				else
 					ROW+=$(green "Active Child")
+					CHILD="true"
 				fi
 				ACTIVE="true"
 			elif [ ! "$MULTISITE" ] && [ "${COLUMNS[0]}" == "$TEMPLATE" ]; then
 				ROW+=$(green "Active Parent")
-				ACTIVE="true"
+				ACTIVE="true"; PARENT="true"
 			elif [ "${COLUMNS[1]}" == "active" ]; then
 				ROW+=$(green "Active")
 				ACTIVE="true"
 			else
 				ROW+=$(blue "Inactive")
+				INACTIVE="true"
 			fi
 
 			# - theme version -
@@ -1850,28 +2036,64 @@ function listthemes {
 			# - theme updates -
 			if [ "${COLUMNS[3]}" == "available" ]; then
 				ROW+="|"; ROW+=$(yellow "${COLUMNS[4]}"); ROW+=" available"
+				UPDATE="true"
 			fi
-		else 	
-			ROW+="|"; ROW+=$(red "Not Found")
+		# else 	
+		#	ROW+="|"; ROW+=$(red "Not Found")
 		fi
 
+		# - add row new line -
 		ROW+=$'\r\n'
 
-		# - split table rows according to active status -
-		if [ "$ACTIVE" == "true" ]; then
-			TABLE+=$ROW
+		# - add row if listing all -
+		ADDROW=""
+		if [ "$ALL" == "true" ]; then ADDROW="true"
 		else 
-			OTHER+=$ROW
+			# - add row if matching a theme limit filter -
+			if [ "$UPDATES" == "true" -a "$UPDATE" == "true" ] \
+				|| [ "$ACTIVES" == "true" -a "$ACTIVE" == "true" ] \
+				|| [ "$INACTIVES" == "true" -a "$INACTIVE" == "true" ] \
+				|| [ "$PARENTS" == "true" -a "$PARENT" == "true" ] \
+				|| [ "$CHILDS" == "true" -a "$CHILD" == "true" ]; then
+				ADDROW="true"
+			fi
+
+			# - check for matching theme slug -
+			if [ -z "$ADDROW" ]; then
+				for THEME in "${THEMES[@]}"; do
+					if [ "$THEME" == "$ATHEME" ]; then
+						ADDROW="true"
+					fi
+				done
+			fi
 		fi
+
+		# - split table rows according to active status -
+		if [ "$ADDROW" == "true" ]; then
+			MATCH="true"
+			if [ "$ACTIVE" == "true" ]; then
+				TABLE+=$ROW
+			else
+				OTHER+=$ROW
+			fi
+		fi
+
+		((++I))
 
 	done
 
-	# - add all other rows to active rows -
-	TABLE+=$OTHER
+	if [ "$MATCH" == "true" ]; then
+		# - add all other rows to active rows -
+		TABLE+=$OTHER
 
-	# - output new pretty table -
-	OUTPUT=$(column -t -s "|" <<< "$TABLE")
-	echo "$OUTPUT"
+		# - output pretty table -	
+		OUTPUT=$(column -t -s "|" <<< "$TABLE")
+		echo "$OUTPUT"
+	else 
+		# - output no match found -
+		red "Sorry."; echo " No matching themes were found."
+	fi
+
 }
 
 # ----------- #
@@ -2002,7 +2224,7 @@ function installtheme {
 		OUTPUT=$($COMMAND)
 	
 		# - check result and maybe try again -
-		checkresult "$OUTPUT" "$SUCCESS"
+		checkresult "$OUTPUT" "$SUCCESS" install
 		if [ "$RESULT" == "failed" ]; then OUTPUT=$($COMMAND); fi
 
 		echo "$OUTPUT"
@@ -2122,7 +2344,7 @@ function activatetheme {
 		OUTPUT=$($COMMAND)
 		
 		# - check result and maybe try again -
-		checkresult "$OUTPUT" "$SUCCESS"
+		checkresult "$OUTPUT" "$SUCCESS" activate
 		if [ "$RESULT" == "failed" ]; then OUTPUT=$($COMMAND); fi
 
 		echo "$OUTPUT"
@@ -2294,7 +2516,7 @@ function deletetheme {
 			OUTPUT=$($COMMAND)
 
 			# - check result and maybe force delete theme -
-			checkresult "$OUTPUT" "$SUCCESS"
+			checkresult "$OUTPUT" "$SUCCESS" delete
 			if [ "$RESULT" == "failed" ]; then
 				THEMEPATH="$SITEPATH"wp-content/themes/"$THEME"
 				if [ -n "$YMLPATH" ] || [ -n "$ALIAS" ] || [ -n "$SSH" ]; then
@@ -2517,10 +2739,11 @@ function syncplugin {
 						if [ "$GIT" == "true" ] || [ "$ZIP" == "true" ]; then
 							rm -rf "$INSTALLTEMP"
 						fi	
+					else
+						# - output invalid source directory message -
+						# 1.0.5: fix incorrect nesting on invalid source message
+						red "Warning: "; printf "Invalid Plugin Source configuration, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
 					fi
-				else
-					# - output invalid source directory message -
-					red "Warning: "; printf "Invalid Plugin Source configuration, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
 				fi
 			fi
 		fi
@@ -2911,27 +3134,166 @@ function syncmuplugin {
 						# - sync must use plugin -
 						# Note: do not ever use --delete option here!!!
 						# TODO: maybe use rsync with --backup option ?
-						rsync -av --delay-updates "$SOURCEPATH" "$PLUGINPATH"
+						# 1.0.5: fix to use working command syntax
+						COMMAND="$SUDO""rsync -av --delay-updates ""$SOURCEPATH"" ""$PLUGINPATH"
+						OUTPUT=$($COMMAND)
+						echo "$OUTPUT"
 						
-						# - set file ownership permissions -
-						if [ -n "$SITEGROUP" ]; then
-							chown -R "$SITEUSER":"$SITEGROUP" "$PLUGINPATH"
-						else
-							chown -R "$SITEUSER" "$PLUGINPATH"
-						fi
+						# - find matching files with rsync dry run -
+						COMMAND="$SUDO""rsync -n -I -ai --out-format=%n ""$SOURCEPATH"" ""$PLUGINPATH"
+
+						# - loop matching files and set permissions -
+						# 1.0.5: set permissions for exact file list
+						FILECOUNT=0; FILELIST=$($COMMAND)
+						readarray -t FILES <<< "$FILELIST"
+						for FILEPATH in "${FILES[@]}"; do
+							if [ ! "${FILEPATH:0:2}" == "./" ]; then
+								if [ -f "$PLUGINPATH""$FILEPATH" ] || [ -d "$PLUGINPATH""$FILEPATH" ]; then
+									if [ -n "$SITEGROUP" ]; then
+										chown "$SITEUSER":"$SITEGROUP" "$PLUGINPATH""$FILEPATH"
+									else
+										chown "$SITEUSER" "$PLUGINPATH""$FILEPATH"
+									fi
+								fi
+								((++FILECOUNT))
+							fi
+						done
 
 						# - output extra info -							
 						printf "Must Use Plugin Path: "; cyan "$SOURCEPATH"; echo "";
-						printf "Synced to: "; green "$PLUGINPATH"; echo " "
+						yellow "$FILECOUNT"; printf " files Synced to: "; green "$PLUGINPATH"; echo " "
 
 						RESULT="success"
+					else
+						# - output invalid source directory message -
+						# 1.0.5: fix incorrect nesting on invalid source message
+						red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
 					fi
+				fi
+			fi
+		fi
+	done < "$CONFIG"
 
-				else
-					# - output invalid source directory message -
-					red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
+	if [ -z "$MATCHED" ]; then
+		# - output no matching slug message -
+		red "Error!"; printf " No matching must-use plugin slug found, check "; white "wpx.conf"; printf " for "; yellow "$PLUGINS"; echo "."
+	fi
+}
+
+# ---------------------- #
+# Delete Must-use Plugin #
+# ---------------------- #
+function deletemuplugin {
+
+	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local PLUGINPATH; local DOSYNC
+	local PLUGINS; PLUGINS=$1;
+
+	# TODO: delete must use plugin for YML configs
+	if [ -n "$YMLPATH" ]; then
+		red "Failed "; printf " on "; green "$SITENAME"; printf " ("; yellow "$YMLPATH"; echo ")"
+		echo " WPX cannot remove must-use plugins for YML configs (yet.)"; return
+	fi
+
+	# TODO: delete must use plugin for alias
+	if [ -n "$ALIAS" ]; then
+		red "Failed "; printf " on "; green "$SITENAME"; printf " "; cyan "@""$ALIAS"; echo ""
+		echo " WPX cannot delete must-use plugins for site aliases (yet.)"; return
+	fi
+
+	# TODO: sync must use plugin for SSH
+	if [ -n "$SSH" ]; then
+		red "Failed "; printf " on "; green "$SITENAME"; printf " ("; yellow "$SSH"; echo ")"
+		echo " WPX cannot delete must-use plugins for SSH sites (yet.)"; return
+	fi
+
+	# read file without requiring it to end in a new line
+	# ref: https://stackoverflow.com/a/31398490/5240159
+	while IFS= read -r -a SOURCE || [ -n "$SOURCE" ]; do
+
+		# ignore lines starting with #
+		if [ ! "${SOURCE:0:1}" == "#" ]; then
+
+			# - expand source data -
+			IFS=" " read -r -a DATA <<< "$SOURCE"
+			SOURCETYPE=${DATA[0]}
+			SOURCESLUG=${DATA[1]}
+			SOURCEPATH=$(echo "${DATA[2]}" | tr -d '\r')
+
+			if [ "$SOURCETYPE" == "muplugin" ]; then
+
+				# - reset do sync flag -
+				DOSYNC="false"
+
+				# - check slug match -
+				if [ "$PLUGINS" == "all" ]; then
+					DOSYNC="true"; fi
+				if [ "$PLUGINS" == "$SOURCESLUG" ]; then
+					DOSYNC="true"; fi
+				if [[ "$PLUGINS" == *","* ]]; then
+					IFS="," read -r -a PLUGINSLUGS <<< "$PLUGINS"
+					for PLUGIN in "${PLUGINSLUGS[@]}"; do
+						if [ "$PLUGIN" == "$SOURCESLUG" ]; then
+							DOSYNC="true"; 
+						fi
+					done
 				fi
 
+				if [ "$DOSYNC" == "true" ]; then
+
+					MATCHED="true"
+					PLUGINPATH=$SITEPATH"wp-content/mu-plugins/"
+
+					# - handle .zip source files -
+					checksource
+
+					if [ -d "$SOURCEPATH" ]; then
+					
+						# - output deleting message -
+						yellow "***"; printf " Deleting matching Must-Use Plugin files for "; cyan "$SOURCESLUG"; printf " on site "; green "$SITENAME"; echo " "
+
+						# - find matching files with rsync dry run -
+						COMMAND="$SUDO""rsync -n -I -ai --out-format=%n ""$SOURCEPATH"" ""$PLUGINPATH"
+
+						# - loop matching files and delete -						
+						FILECOUNT=0; FILELIST=$($COMMAND)
+						readarray -t FILES <<< "$FILELIST"
+						for FILEPATH in "${FILES[@]}"; do
+							if [ ! "${FILEPATH:0:2}" == "./" ]; then
+								if [ -f "$PLUGINPATH""$FILEPATH" ]; then
+									rm "$PLUGINPATH""$FILEPATH"
+									echo "Deleted file ""$FILEPATH"" from destination site..."
+									((++FILECOUNT))
+								fi
+							fi
+						done
+						if [ "$FILECOUNT" -gt 0 ]; then
+							yellow "$FILECOUNT"; echo " matching files have been deleted.";
+						else
+							echo "No matching files found to delete.";
+						fi
+
+						# - now remove matching directories -
+						DIRCOUNT=0; DIRLIST=$($COMMAND)
+						readarray -t DIRS <<< "$DIRLIST"
+						for DIRPATH in "${DIRS[@]}"; do
+							if [ ! "${DIRPATH:0:2}" == "./" ]; then
+								if [ -d "$PLUGINPATH""$DIRPATH" ]; then
+									rmdir "$PLUGINPATH""$DIRPATH"
+									# echo "Removed directory ""$DIRPATH"" from destination site..."
+									((++DIRCOUNT))
+								fi
+							fi
+						done
+						if [ "$DIRCOUNT" -gt 0 ]; then
+							yellow "$DIRCOUNT"; echo " matching (empty) directories have been removed.";
+						fi
+
+						RESULT="success"
+					else
+						# - output invalid source directory message -
+						red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
+					fi
+				fi
 			fi
 		fi
 	done < "$CONFIG"
@@ -2949,7 +3311,7 @@ function syncmuplugin {
 function syncdropin {
 	
 	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local DOSYNC
-	local FILE; FILE=$1
+	local DROPIN; DROPIN=$1
 
 	# TODO: sync dropin for site alias
 	if [ -n "$ALIAS" ]; then
@@ -2989,11 +3351,11 @@ function syncdropin {
 				DOSYNC="false"
 
 				# - check slug match -
-				if [ "$FILE" == "all" ]; then
+				if [ "$DROPIN" == "all" ]; then
 					DOSYNC="true"; fi
-				if [ "$FILE" == "$SOURCESLUG" ]; then
+				if [ "$DROPIN" == "$SOURCESLUG" ]; then
 					DOSYNC="true"; fi
-				if [[ "$FILE" == *","* ]]; then
+				if [[ "$DROPIN" == *","* ]]; then
 					IFS="," read -r -a FILES <<< "$FILE"
 					for FILE in "${FILES[@]}"; do
 						if [ "$FILE" == "$SOURCESLUG" ]; then
@@ -3017,18 +3379,43 @@ function syncdropin {
 						# - sync base relative files -
 						# note: do not use --delete option here!!!
 						# TODO: maybe use rsync with --backup option ?
-						"$SUDO"rsync -av --delay-updates "$SOURCEPATH" "$SITEPATH"
+						# rsync -av --delay-updates "$SOURCEPATH" "$SITEPATH"
+						# 1.0.5: fix to use working command syntax
+						COMMAND="$SUDO""rsync -av --delay-updates ""$SOURCEPATH"" ""$SITEPATH"
+						OUTPUT=$($COMMAND)
+						echo "$OUTPUT"
+						
+						# - find matching files with rsync dry run -
+						COMMAND="$SUDO""rsync -n -I -ai --out-format=%n ""$SOURCEPATH"" ""$SITEPATH"
+
+						# - loop matching files and set permissions -
+						# 1.0.5: set permissions for exact file list
+						FILECOUNT=0; FILELIST=$($COMMAND)
+						readarray -t FILES <<< "$FILELIST"
+						for FILEPATH in "${FILES[@]}"; do
+							if [ ! "${FILEPATH:0:2}" == "./" ]; then
+								if [ -f "$PLUGINPATH""$FILEPATH" ] || [ -d "$PLUGINPATH""$FILEPATH" ]; then
+									if [ -n "$SITEGROUP" ]; then
+										chown "$SITEUSER":"$SITEGROUP" "$SITEPATH""$FILEPATH"
+									else
+										chown "$SITEUSER" "$SITEPATH""$FILEPATH"
+									fi
+								fi
+								((++FILECOUNT))
+							fi
+						done
 
 						# - output extra info -
-						printf "Source Base File Path: "; cyan "$SOURCEPATH"; echo "";
-						printf "Synced to: "; green "$SITEPATH"; echo ""
+						printf "Source Dropin File Path: "; cyan "$SOURCEPATH"; echo "";
+						yellow "$FILECOUNT"; printf " files Synced (relative) to: "; green "$SITEPATH"; echo ""
 
 						RESULT="success"
-					fi
 
-				else
-					# - output invalid source directory message -
-					red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
+					else
+						# - output invalid source directory message -
+						# 1.0.5: fix incorrect nesting on invalid source message
+						red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
+					fi
 				fi
 
 			fi
@@ -3037,10 +3424,135 @@ function syncdropin {
 
 	if [ -z "$MATCHED" ]; then
 		# - output no slug match message -
-		red "Error!"; printf " No matching base file slug found, check "; white "wpx.conf"; printf " for "; yellow "$FILES"; echo "."
+		red "Error!"; printf " No matching base file slug found, check "; white "wpx.conf"; printf " for "; yellow "$DROPIN"; echo "."
 	fi
 }
 
+# ---------------- #
+# Delete Dropin(s) #
+# ---------------- #
+function deletedropin {
+	
+	local SOURCETYPE; local SOURCESLUG; local SOURCEPATH; local DOSYNC
+	local DROPIN; DROPIN=$1
+
+	# TODO: sync dropin for site alias
+	if [ -n "$ALIAS" ]; then
+		red "Failed "; printf " on "; green "$SITENAME"; printf " ("; yellow "$YMLPATH"; echo ")"
+		echo " WPX cannot delete dropins for site aliases (yet.)"; return
+	fi
+
+	# TODO: sync dropin for SSH
+	if [ -n "$SSH" ]; then
+		red "Failed "; printf " on "; green "$SITENAME"; printf " "; cyan "@""$ALIAS"; echo ""
+		echo " WPX cannot delete dropins for SSH sites (yet.)"; return
+	fi
+
+	# TODO: sync dropin for YML configs
+	if [ -n "$YMLPATH" ]; then
+		red "Failed "; printf " on "; green "$SITENAME"; printf " ("; yellow "$SSH"; echo ")"
+		echo " WPX cannot delete dropins for YML configs (yet.)"; return
+	fi
+
+	# - read file without requiring it to end in a new line -
+	# ref: https://stackoverflow.com/a/31398490/5240159
+	MATCHED=""
+	while IFS= read -r -a SOURCE || [ -n "$SOURCE" ]; do
+
+		# - ignore lines starting with # -
+		if [ ! "${SOURCE:0:1}" == "#" ]; then
+
+			# - expand source data -
+			IFS=" " read -r -a DATA <<< "$SOURCE"
+			SOURCETYPE=${DATA[0]}
+			SOURCESLUG=${DATA[1]}
+			SOURCEPATH=$(echo "${DATA[2]}" | tr -d '\r')
+
+			if [ "$SOURCETYPE" == "dropin" ]; then
+
+				# - reset do sync flag -
+				DOSYNC="false"
+
+				# - check slug match -
+				if [ "$DROPIN" == "all" ]; then
+					DOSYNC="true"; fi
+				if [ "$DROPIN" == "$SOURCESLUG" ]; then
+					DOSYNC="true"; fi
+				if [[ "$DROPIN" == *","* ]]; then
+					IFS="," read -r -a FILES <<< "$DROPIN"
+					for FILE in "${FILES[@]}"; do
+						if [ "$FILE" == "$SOURCESLUG" ]; then
+							DOSYNC="true"; 
+						fi
+					done
+				fi
+
+				if [ "$DOSYNC" == "true" ]; then
+
+					MATCHED="true"
+
+					# - handle .zip source files -
+					checksource
+
+					if [ -d "$SOURCEPATH" ]; then
+
+						# - output deleting message -
+						yellow "***"; printf " Deleting matching Drop-in files for "; cyan "$SOURCESLUG"; printf " on site "; green "$SITENAME"; echo " "
+
+						# - find matching files with rsync dry run -
+						COMMAND="$SUDO""rsync -n -I -ai --out-format=%n ""$SOURCEPATH"" ""$SITEPATH"
+						
+						# - loop matching files and delete -						
+						FILECOUNT=0; FILELIST=$($COMMAND)
+						readarray -t FILES <<< "$FILELIST"
+						for FILEPATH in "${FILES[@]}"; do
+							if [ ! "${FILEPATH:0:2}" == "./" ]; then
+								if [ -f "$PLUGINPATH""$FILEPATH" ]; then
+									rm "$PLUGINPATH""$FILEPATH"
+									echo "Deleted file ""$FILEPATH"" from destination site..."
+									((++FILECOUNT))
+								fi
+							fi
+						done
+						if [ "$FILECOUNT" -gt 0 ]; then
+							yellow "$FILECOUNT"; echo " matching files have been deleted.";
+						else
+							echo "No matching files were found to delete.";
+						fi
+
+						# - now remove matching directories -
+						DIRCOUNT=0; DIRLIST=$($COMMAND)
+						readarray -t DIRS <<< "$DIRLIST"
+						for DIRPATH in "${DIRS[@]}"; do
+							if [ ! "${DIRPATH:0:2}" == "./" ]; then
+								if [ -d "$PLUGINPATH""$DIRPATH" ]; then
+									rmdir "$PLUGINPATH""$DIRPATH"
+									# echo "Removed directory ""$DIRPATH"" from destination site..."
+									((++DIRCOUNT))
+								fi
+							fi
+						done
+						if [ "$DIRCOUNT" -gt 0 ]; then
+							yellow "$DIRCOUNT"; echo " matching (empty) directories have been removed.";
+						fi
+
+						RESULT="success"
+
+					else
+						# - output invalid source directory message -
+						red "Warning: "; printf "Invalid source directory, check "; white "wpx.conf"; printf " for "; yellow "$SOURCESLUG"; printf ". Skipping..."; echo " "
+					fi
+				fi
+
+			fi
+		fi
+	done < "$CONFIG"
+
+	if [ -z "$MATCHED" ]; then
+		# - output no slug match message -
+		red "Error!"; printf " No matching base file slug found, check "; white "wpx.conf"; printf " for "; yellow "$DROPIN"; echo "."
+	fi
+}
 
 # ------------------------- #
 # === LANGUAGE COMMANDS === #
@@ -3236,11 +3748,12 @@ else
 	for SITE in "${SITENAMES[@]}"; do
 		# - maybe split to site and alias -
 		if [[ "$SITE" == *"@"* ]]; then
-			IFS="@" read -r -a SITEALIAS <<< "$SITENAMES"
+			# 1.0.5: fix to split SITE not SITENAMES
+			IFS="@" read -r -a SITEALIAS <<< "$SITE"
 			SITENAMES[$I]=${SITEALIAS[0]}
 			ALIASES[$I]=${SITEALIAS[1]}
 		fi
-		((I++))
+		((++I))
 	done
 fi
 
@@ -3269,18 +3782,19 @@ fi
 # [3.2] - theme slugs for theme actions -
 if [[ "$1" == *"theme"* ]]; then
 	if [ -z "$3" ]; then
-		createarray "list" "theme"; INARRAY=$(checkarray "$1")
-		if [ "$INARRAY" == "1" ]; then
-			# - auto-set to list all for list actions -
-			printf "No theme specified, setting to "; yellow "all"; echo "..."
-			SLUGS="all"
-		else
+		# createarray "list" "theme"; INARRAY=$(checkarray "$1")
+		# if [ "$INARRAY" == "1" ]; then
+		#	# - auto-set to list all for list actions -
+		#	printf "No theme specified, setting to "; yellow "all"; echo "..."
+		#	SLUGS="all"
+		# else
+			# 1.0.5: fix to backwards check condition
 		 	createarray "check" "theme"; INARRAY=$(checkarray "$1")
-		 	if [ ! "$INARRAY" == "1" ]; then
+		 	if [ "$INARRAY" == "1" ]; then
 				# - output specify theme slugs message -
 				red "Error!"; printf " You must specify theme slug(s)"; echo "..."; exit 1
 			fi
-		fi	
+		# fi	
 	else
 		# - set specified slugs -
 		SLUGS="$3"
@@ -3289,13 +3803,19 @@ fi
 
 # [3.3] - misc sync command slugs -
 # - synccore : core slug -
-# - syncmuplugin : muplugin slug -
-# - syncdropin : dropin slug -
+# - syncmuplugin, deletemuplugin : muplugin slug -
+# - syncdropin, deletedropin : dropin slug -
 if [[ "$1" == *"sync"* ]]; then
-	createarray "sync" "core" "sync" "dropin"; IN1=$(checkarray "$1")
+	createarray "sync" "core"; IN1=$(checkarray "$1")
 	createarray "sync" "muplugin" "sync" "mustuseplugin"; IN2=$(checkarray "$1")
-	createarray  "sync" "mu_plugin" "sync" "mu-plugin"; IN3=$(checkarray "$1")
-	if [ "$IN1" == "1" ] || [ "$IN2" == "1" ] || [ "$IN3" == "1" ] ; then SLUGS="$3"; fi
+	createarray "sync" "dropin" "sync" "files"; IN3=$(checkarray "$1")
+	if [ "$IN1" == "1" ] || [ "$IN2" == "1" ] || [ "$IN3" == "1" ]; then SLUGS="$3"; fi
+fi
+# 1.0.5: added checks for deletemuplugin and deletedropin
+if [[ "$1" == *"delete"* ]]; then
+	createarray  "delete" "muplugin" "remove" "muplugin"; IN1=$(checkarray "$1")
+	createarray  "delete" "dropin" "remove" "dropin"; IN2=$(checkarray "$1")
+	if [ "$IN1" == "1" ] || [ "$IN2" == "1" ]; then SLUGS="$3"; fi
 fi
 
 # [3.4] - arguments for core install / update -
@@ -3331,6 +3851,17 @@ if [ "$INARRAY" == "1" ]; then
 		red "Error!"; printf " You must specify an option meta key."; echo ""; exit 1
 	fi
 fi
+
+# [3.7] - string argument for search commands -
+# createarray "search" "files" "search" "string"; IN1=$(checkarray "$1")
+# createarray "search" "db" "search" "database"; IN2=$(checkarray "$1")
+# if [ "$IN1" == "1" ] || [ "$IN2" == "1" ]; then
+# 	if [ -n "$3" ]; then 
+# 		STRING="$3";
+# 	else 
+# 		red "Error!"; printf " You must specify a string to search for."; echo ""; exit 1
+# 	fi
+# fi
 
 # - debug output for slugs -
 if [ "$DEBUG" == "true" ]; then echo "Slugs: ""$SLUGS"; fi
@@ -3378,7 +3909,7 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 			SKIP="false";
 
 			# - increment site count -
-			((SITECOUNT++))
+			((++SITECOUNT))
 		
 			# - get site data config -
 			SITENAME=${DATA[1]}
@@ -3392,7 +3923,7 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 				if [ -n "${ALIASES[$I]}" ]; then
 					ALIAS="${ALIASES[$I]}"
 				fi
-				((I++))
+				((++I))
 			done
 
 			# - maybe split user into user:group -
@@ -3462,21 +3993,23 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 			# - reset WP and SUDO commands -
 			WP=""; SUDO=""; PREFIX=""
 			if [ -n "$YMLPATH" ]; then
-				# TEMP - use provided config path as global config -	
-				PREFIX="WP_CLI_CONFIG_PATH=""$YMLPATH"
+				# TEMP - use provided config path as global config -
+				# 1.0.5: fix to add extra space suffix to YML env prefix
+				PREFIX="WP_CLI_CONFIG_PATH=""$YMLPATH"" "
 			fi
 
-			# - check if site user matches current user -
+			# - check if site user matches current user
+			# 1.0.5: remove output colors for command success matching
 			if [ "$SITEUSER" == "$USER" ]; then
 				# - current user is site user, so no sudo needed -
 				if [ "$SITEUSER" == "root" ]; then
-					WP="$PREFIX""wp --allow-root"
+					WP="$PREFIX""wp --allow-root --no-color"
 				else
-					WP="$PREFIX""wp"
+					WP="$PREFIX""wp --no-color"
 				fi				
 			else
-				# TODO: maybe call sudo_check ?
-				WP="$PREFIX""sudo -u ""$SITEUSER"" wp"
+				# TODO: maybe call sudo_check first?
+				WP="$PREFIX""sudo -u ""$SITEUSER"" wp --no-color"
 				SUDO="sudo -u ""$SITEUSER"" "
 			fi
 
@@ -3487,6 +4020,8 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 			elif [ -n "$SITEPATH" ]; then 
 				# - maybe append SSH switch to WP command -
 				# note: experimental devolopment test code
+				# see: https://danielbachhuber.com/tip/wp-ssh-custom-path/
+				# WP_CLI_SSH_PRE_CMD="PATH=$HOME/bin:$PATH"
 				if [ "${SITEPATH:0:4}" == "ssh:" ]; then
 					SSH="true"
 					SITEPATH="${SITEPATH:4}"
@@ -3517,11 +4052,11 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 					for SITE in "${SITENAMES[@]}"; do
 						if [ "$SITE" == "$SITENAME" ]; then
 							DO="true"; FOUND="true";
-							FOUNDSITES[$J]="$SITE"; ((J++))
+							FOUNDSITES[$J]="$SITE"; ((++J))
 						fi
 					done
 				fi
-
+				
 				# - check for matching command -
 				if [ "$DO" == "true" ]; then
 				
@@ -3539,7 +4074,7 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 					if [ -n "$SSH" ]; then
 						printf "Using SSH "; printf " for site "; green "$SITENAME"; echo "..."
 					fi
-					
+
 					# ------------- #
 					# CORE COMMANDS #
 					# ------------- #
@@ -3593,10 +4128,25 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 					if [ "$IN1" == "1" ] || [ "$IN2" == "1" ]; then
 						fixowners; DONE="true"; fi
 
-					# - get option value -	
+					# - get option value -
 					createarray "get" "option" "get" "value"; INARRAY=$(checkarray "$1")
 					if [ "$INARRAY" == "1" ]; then
 						getoption; DONE="true"; fi
+
+					# - check update list -
+					createarray "update" "list" "list" "update"; INARRAY=$(checkarray "$1")
+					if [ "$INARRAY" == "1" ]; then
+						updatelist; DONE="true"; fi
+
+					# - search files for string -
+					# createarray "search" "files" "scan" "files"; INARRAY=$(checkarray "$1")
+					# if [ "$INARRAY" == "1" ]; then
+					#	searchfiles; DONE="true"; fi
+
+					# - search database for string -
+					# createarray "search" "db" "scan" "database"; INARRAY=$(checkarray "$1")
+					# if [ "$INARRAY" == "1" ]; then
+					#	searchdatabase; DONE="true"; fi
 
 					# --------------- #
 					# PLUGIN COMMANDS #
@@ -3605,6 +4155,11 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 					# - check/list plugin(s) -
 					createarray "list" "plugin" "check" "plugin"; INARRAY=$(checkarray "$1")
 					if [ "$INARRAY" == "1" ]; then listplugins "$SLUGS"; DONE="true"; fi
+
+					# - verify plugin(s) -	
+					# 1.0.5: added verify plugin checksums command
+					createarray "verify" "plugin"; INARRAY=$(checkarray "$1")
+					if [ "$INARRAY" == "1" ]; then verifyplugin "$SLUGS"; DONE="true"; fi
 
 					# - install plugin(s) -	
 					createarray "install" "plugin"; INARRAY=$(checkarray "$1")
@@ -3725,7 +4280,7 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 					# - sync and activate theme (singular only) -
 					createarray "syncactivate" "theme" "sync" "activatetheme"; IN1=$(checkarray "$1")
 					createarray "sync_activate" "theme" "sync-activate" "theme"; IN2=$(checkarray "$1")
-					if [ "$IN1" == "1" ] || [ "$IN2" == "1" ]; then 
+					if [ "$IN1" == "1" ] || [ "$IN2" == "1" ]; then
 						syncactivatetheme "$SLUGS"; DONE="true"; fi
 						
 					# - sync must-use plugin(s) -
@@ -3733,10 +4288,18 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 					createarray "sync" "mu_plugins"; IN2=$(checkarray "$1")
 					if [ "$IN1" == "1" ] || [ "$IN2" == "1" ]; then
 						syncmuplugin "$SLUGS"; DONE="true"; fi
+
+					# - delete must-use plugin(s) -
+					createarray "delete" "muplugin" "remove" "muplugin"; INARRAY=$(checkarray "$1")
+					if [ "$INARRAY" == "1" ]; then deletemuplugin "$SLUGS"; DONE="true"; fi
 						
 					# - sync dropin file(s) -
-					createarray "sync" "dropin"; INARRAY=$(checkarray "$1")
-					checkarray "$1"; if [ "$INARRAY" == "1" ]; then syncdropin "$SLUGS"; DONE="true"; fi
+					createarray "sync" "dropin" "sync" "files"; INARRAY=$(checkarray "$1")
+					if [ "$INARRAY" == "1" ]; then syncdropin "$SLUGS"; DONE="true"; fi
+					
+					# - delete dropin file(s) -
+					createarray "delete" "dropin" "remove" "dropin"; INARRAY=$(checkarray "$1")
+					if [ "$INARRAY" == "1" ]; then deletedropin "$SLUGS"; DONE="true"; fi			
 
 					# ----------------- #
 					# LANGUAGE COMMANDS #
@@ -3779,7 +4342,7 @@ while IFS= read -r -a LINE || [ -n "$LINE" ]; do
 			if [ "$SHOWCONFIG" == "true" ] || [ "$SHOWCONFIG" == "sources" ]; then
 				
 				# - increment source count -
-				((SOURCECOUNT++))
+				((++SOURCECOUNT))
 				
 				# - set type / slug / path columns -
 				SOURCETABLE+=$(white "${DATA[0]}"); SOURCETABLE+="|"
