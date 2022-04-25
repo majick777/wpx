@@ -397,6 +397,10 @@ Enjoy!
 
 ### Changelog
 
+#### = 1.0.6 =
+* Fix to synctheme/syncplugin for split development versions
+* Fix to deleteplugin force delete fallback command quotes
+
 #### = 1.0.5 =
 * added deletemuplugin command for removing synced mu-plugins
 * added deletedropin command for removing synced dropins
