@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # - set WPX version -
-WPXV="1.0.5"
+WPXV="1.0.6"
 
 # ================================ #
 # === WPX - WP CLI Multiplied! === #
@@ -1868,7 +1868,8 @@ function deleteplugin {
 			if [ -n "$YMLPATH" ] || [ -n "$ALIAS" ] || [ -n "$SSH" ]; then
 				red "Failed"; printf ": Could not delete plugin "; cyan "$PLUGIN"; echo "."
 			elif [ -d "$PLUGINPATH" ]; then
-				COMMAND="$SUDO"rm -rf "$PLUGINPATH"
+				# 1.0.6: fix to unquoted command rm -rf
+				COMMAND="$SUDO""rm -rf ""$PLUGINPATH"
 				OUTPUT=$($COMMAND)
 				if [ -d "$PLUGINPATH" ]; then
 					red "Failed"; printf ": Could not delete plugin "; cyan "$PLUGIN"; printf " on site "; green "$SITENAME"; echo "."
@@ -2671,6 +2672,16 @@ function syncplugin {
 				# - reset do sync flag -
 				DOSYNC=""
 
+				# - maybe split source reference to get actual plugin slug -
+				# (used for syncing development versions with the same slug)
+				# 1.0.7: fix by moving out from inside dosync condition
+				ACTUALSLUG="$SOURCESLUG"
+				if [[ "$SOURCESLUG" == *":"* ]]; then
+					IFS=":" read -r -a SLUGINFO <<< "$SOURCESLUG"
+					SOURCESLUG=${SLUGINFO[0]}
+					ACTUALSLUG=${SLUGINFO[1]}
+				fi
+
 				# - match plugin slugs -
 				if [ "$PLUGIN" == "all" ] || [ "$PLUGIN" == "$SOURCESLUG" ]; then 
 					DOSYNC="true"
@@ -2687,15 +2698,6 @@ function syncplugin {
 				if [ "$DOSYNC" == "true" ]; then
 
 					RESULT=""; MATCHED="true"
-
-					# - maybe split source reference to get actual plugin slug -
-					# (used for syncing development versions with the same slug)
-					ACTUALSLUG="$SOURCESLUG"
-					if [[ "$SOURCESLUG" == *":"* ]]; then
-						IFS=":" read -r -a SLUGINFO <<< "$SOURCESLUG"
-						SOURCESLUG=${SLUGINFO[0]}
-						ACTUALSLUG=${SLUGINFO[1]}
-					fi
 
 					# - check if source is GIT / zip or URL zip -
 					checksource
@@ -2883,6 +2885,17 @@ function synctheme {
 				# - reset do sync flag -
 				DOSYNC=""
 
+				# - maybe split source reference to get actual plugin/theme slug -
+				# (used for syncing a development version with the same slug)
+				# 1.0.7: fix by moving out from inside dosync condition
+				if [[ "$SOURCESLUG" == *":"* ]]; then
+					IFS=":" read -r -a SLUGINFO <<< "$SOURCESLUG"
+					SOURCESLUG=${SLUGINFO[0]}
+					ACTUALSLUG=${SLUGINFO[1]}
+				else
+					ACTUALSLUG="$SOURCESLUG"
+				fi
+					
 				# - match theme slugs -
 				if [ "$THEME" == "all" ] || [ "$THEME" == "$SOURCESLUG" ]; then 
 					DOSYNC="true"
@@ -2899,16 +2912,6 @@ function synctheme {
 				if [ "$DOSYNC" == "true" ]; then
 
 					RESULT=""; MATCHED="true"
-
-					# - maybe split source reference to get actual plugin/theme slug -
-					# (used for syncing a development version with the same slug)
-					if [[ "$SOURCESLUG" == *":"* ]]; then
-						IFS=":" read -r -a SLUGINFO <<< "$SOURCESLUG"
-						SOURCESLUG=${SLUGINFO[0]}
-						ACTUALSLUG=${SLUGINFO[1]}
-					else
-						ACTUALSLUG="$SOURCESLUG"
-					fi
 
 					# - check if source is GIT / zip or URL zip -
 					checksource
