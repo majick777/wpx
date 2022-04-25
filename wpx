@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # - set WPX version -
-WPXV="1.0.5"
+WPXV="1.0.6"
 
 # ================================ #
 # === WPX - WP CLI Multiplied! === #
