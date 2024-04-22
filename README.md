@@ -397,6 +397,11 @@ Enjoy!
 
 ### Changelog
 
+#### = 1.0.7 = 
+* Fixed activate for syncactivate plugins/themes
+* Fixed incorrect command not found message when site not found
+* Added checks for already updated result strings
+
 #### = 1.0.6 =
 * Fix to synctheme/syncplugin for split development versions
 * Fix to deleteplugin force delete fallback command quotes
